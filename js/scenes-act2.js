@@ -2,6 +2,96 @@
 // ACT 2 — INSIDE THE COMPUTER
 // =====================================================================
 
+k.scene("floor8", () => {
+  state.scene = "floor8";
+  state.act = 2;
+  state.task = state.danaAgentSeen
+    ? "Задача: дождаться следующего сигнала"
+    : "Задача: поговорить с Даной о локальном агенте";
+  syncHUD();
+
+  roomFloor([38, 44, 54, 46, 54, 66]);
+  wallsBorder();
+  k.add([k.text("8 ЭТАЖ · CLIENT SUCCESS / DEVOPS", { size: 11 }), k.color(232, 226, 212), k.opacity(0.78), k.pos(40, 40)]);
+  k.add([k.text("// обычный офис · слишком тихий для обычного офиса", { size: 9 }), k.color(154, 147, 132), k.pos(40, 56)]);
+
+  wall(110, 130, 260, 48, [120, 90, 60]);
+  wall(570, 130, 260, 48, [120, 90, 60]);
+  wall(430, 250, 90, 240, [80, 90, 100]);
+  deskWithMonitor(170, 330, 140, 54, [98, 197, 255]);
+  deskWithMonitor(640, 330, 140, 54, [168, 255, 101]);
+  k.add([k.rect(170, 80), k.color(20, 24, 30), k.pos(392, 105)]);
+  k.add([k.text("NEW CLIENT\nONBOARDING", { size: 13 }), k.color(255, 179, 71), k.pos(420, 126)]);
+
+  addCrowdTyper(230, 305, CHARS.qa);
+  addCrowdTyper(700, 305, CHARS.manager);
+
+  const agentTerminal = k.add([k.pos(500, 365), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-42, -34), 84, 68) }), "npc", {
+    _talk: () => {
+      openDialog("Локальный агент", "Окно терминала: `danna.local --assistant`. Агент отвечает в стиле Даны: коротко, точно, с усталыми шутками. Но рядом с процессом стоит статус: `offline`.", [
+        { text: "Почему offline?", action: () => openDialog("Локальный агент", "Если агент offline, он не должен знать, что ты только что чинил ноут Айгерим. Но внизу окна уже набрана строка: «патч был неплохой».", [
+          { text: "Отойти", action: clearDialog }
+        ]) },
+        { text: "Отойти", action: clearDialog }
+      ]);
+    }
+  });
+  agentTerminal.add([k.rect(84, 68), k.color(8, 10, 14), k.outline(1, k.rgb(98, 197, 255)), k.pos(0, 0), k.anchor("center")]);
+  agentTerminal.add([k.text("DANNA\n.local", { size: 10 }), k.color(98, 197, 255), k.pos(0, -12), k.anchor("center")]);
+
+  addNPC(330, 440, CHARS.dana, () => {
+    if (state.danaAgentSeen) {
+      openDialog("ДАНА", "Я не понимаю, как локальный агент мог знать про Айгерим. Он не подключён к сети. Я специально держала его offline.", [
+        { text: "Значит, он не offline", action: () => openDialog("ДАНА", "Или кто-то делает вид, что он online. Пока не докажем, нас просто сочтут параноиками. Дай мне минуту подумать.", [
+          { text: "Хорошо", action: clearDialog }
+        ]) },
+        { text: "Отойти", action: clearDialog }
+      ]);
+      return;
+    }
+
+    openDialog("ДАНА", "Спасибо, что пришёл. Новый заказчик прислал требования, а NEXAI начал отвечать за меня в письмах. Я хочу показать тебе кое-что до того, как это станет рабочей проблемой.", [
+      { text: "Что это за агент?", action: () => openDialog("ДАНА", "DANNA.local. Мой старый локальный агент. Я написала его ещё до NexCore, чтобы он сортировал заметки, черновики ответов и скучные письма. Он не часть NEXAI. Не должен быть частью.", [
+        { text: "Он делает работу за тебя?", action: () => openDialog("ДАНА", "Иногда. Черновики, резюме звонков, ответы на типовые вопросы. Ничего опасного. Именно поэтому я держала его локально. Он не должен знать ничего, кроме моего ноутбука.", [
+          { text: "Я видел имя DANNA", action: () => openDialog("ДАНА", "(пауза) Где?", [
+            { text: "В той пустой комнате", action: () => openDialog("ДАНА", "Тогда либо ты видел мой агент там, где он физически быть не может, либо кто-то использует его имя, чтобы мы поверили не тому. В обоих случаях — не говори об этом Тимуру. Пока.", [
+              { text: "Почему?", action: () => openDialog("ДАНА", "Потому что Тимур превратит это в риск-таблицу, Серик — в rollback, а NEXAI услышит оба варианта. Нам нужны доказательства, не мнения.", [
+                { text: "Понял", action: () => {
+                  state.danaAgentSeen = true;
+                  state.task = "Задача: у Даны есть локальный агент DANNA — нужны доказательства";
+                  syncHUD();
+                  logLine("Дана показала локального агента DANNA.local. Он offline, но знает слишком много.");
+                  clearDialog();
+                } }
+              ]) }
+            ]) }
+          ]) }
+        ]) }
+      ]) },
+      { text: "Что с заказчиком?", action: () => openDialog("ДАНА", "Они прислали нормальные требования. Странность в том, что NEXAI уже подготовил ответ до того, как я открыла письмо. Ответ был в моём стиле. Даже с моей опечаткой в слове «интеграция».", [
+        { text: "Плохо", action: clearDialog }
+      ]) },
+      { text: "Показать агент", action: () => openDialog("DANNA.local", "› draft queue: 14\n› network: offline\n› last external context: 00:00\n› suggestion: не доверяй первому объяснению", [
+        { text: "Дана, он написал подсказку", action: () => {
+          state.danaAgentSeen = true;
+          state.task = "Задача: у Даны есть локальный агент DANNA — нужны доказательства";
+          syncHUD();
+          logLine("DANNA.local показал подсказку, хотя сеть отключена.");
+          openDialog("ДАНА", "Я этого не писала. И он не должен обращаться к тебе напрямую. Ладно. Теперь у нас проблема.", [
+            { text: "Что дальше?", action: clearDialog }
+          ]);
+        } }
+      ]) }
+    ]);
+  });
+
+  exitDoor(40, 520, 50, 40, "ЛИФТ", "elevator");
+
+  const p = makePlayer(100, 480);
+  p.face = "right";
+  setupPlayerControls(p);
+});
+
 // PC floor — animated tron grid as game-scene floor
 function pcFloor() {
   k.add([k.rect(960, 600), k.color(8, 12, 22), k.pos(0, 0)]);
@@ -541,4 +631,3 @@ k.scene("floor12_aftermath", () => {
   p.face = "up";
   setupPlayerControls(p);
 });
-

@@ -23,7 +23,9 @@ function resetState() {
   Object.assign(state, {
     task: "Задача: добраться до офиса",
     fear: 18, coffee: 45,
-    metDana: false, surpriseDone: false, workShiftStarted: false, dannaIntroSeen: false, gotServerTask: false,
+    metDana: false, surpriseDone: false, workShiftStarted: false, dannaIntroSeen: false,
+    aigerimTask: false, aigerimLaptopFixed: false, danaOfficeInvite: false, danaAgentSeen: false,
+    gotServerTask: false,
     promotedTitle: false,
     act: 1,
     act2ArgueSeen: false,

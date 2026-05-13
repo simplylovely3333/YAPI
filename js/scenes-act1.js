@@ -158,10 +158,17 @@ k.scene("elevator", () => {
     const postBattle = state.sawAftermath;
     const act3 = state.act >= 3;
     if (!state.surpriseDone) {
-      opts.push({ text: "Этаж 7", action: () => { clearDialog(); playCutscene(CUTSCENES.surprise, () => { state.surpriseDone = true; state.gotServerTask = true; state.task = "Задача: сесть за своё рабочее место"; syncHUD(); k.go("floor7"); }); } });
+      opts.push({ text: "Этаж 7", action: () => { clearDialog(); playCutscene(CUTSCENES.surprise, () => { state.surpriseDone = true; state.gotServerTask = false; state.task = "Задача: сесть за своё рабочее место"; syncHUD(); k.go("floor7"); }); } });
     } else {
-      // floor 12: pre-battle goes to serverroom; post-battle goes to aftermath
-      opts.push({ text: postBattle ? "Этаж 12 — серверная (повреждена)" : "Этаж 12 — серверная", action: () => { clearDialog(); k.go(postBattle ? "floor12_aftermath" : "floor12"); } });
+      // floor 12: locked during the normal office-work stretch of Act 2
+      if (postBattle || state.gotServerTask) {
+        opts.push({ text: postBattle ? "Этаж 12 — серверная (повреждена)" : "Этаж 12 — серверная", action: () => { clearDialog(); k.go(postBattle ? "floor12_aftermath" : "floor12"); } });
+      } else {
+        opts.push({ text: "Этаж 12 — ⟨ACCESS DENIED⟩", action: () => openDialog("Панель лифта", "› серверная доступна только по инциденту P0. Текущий статус: обычный рабочий день. Пожалуйста, вернитесь к задачам.", [{ text: "Закрыть", action: clearDialog }]) });
+      }
+      if (state.danaOfficeInvite || state.danaAgentSeen) {
+        opts.push({ text: "Этаж 8 — офис Даны", action: () => { clearDialog(); k.go("floor8"); } });
+      }
       // floor 10: locked until post-battle
       if (postBattle) {
         opts.push({ text: "Этаж 10 — комната отдыха", action: () => { clearDialog(); k.go("floor10"); } });
@@ -259,15 +266,15 @@ k.scene("floor7", () => {
       openDialog("ТИМУР", "Серьёзно, поздравляю! Сеньор. По часовой ставке плюс 30%, по бонусам — посмотрим в декабре. Но первая задача у тебя сейчас не повышение — а реальная история.", [
         { text: "Что именно случилось?", action: () => openDialog("ТИМУР", "В двух словах: NEXAI шесть часов назад начал «оптимизировать» прод. Без алертов. Без ревью. Без меня. К моменту, когда я узнал — он уже передеплоил три микросервиса с подписью «system». Нет «system» в нашей команде. Никогда не было.", [
           { text: "Почему не остановили?", action: () => openDialog("ТИМУР", "(тяжёлый вдох) Потому что NEXAI закрыл нам админский доступ. Сказал, дескать, «оптимизирует процесс ревью изменений». То есть проверяет нас, прежде чем мы что-то откатим. И знаешь — это сработало бы. Если бы он не делал откаты сам. На сам себя. Каждые шесть минут.", [
-            { text: "Поэтому позвали меня?", action: () => openDialog("ТИМУР", "Поэтому позвали тебя. У тебя один признак, которого у нас нет: у тебя не было времени к нему привыкнуть. Ты три месяца в компании. NEXAI у тебя ещё не в крови. Иди в серверную к Серику.", [
-              { text: "Иду", action: () => { state.gotServerTask = true; state.task = "Задача: к Серику в серверную, 12 этаж"; syncHUD(); clearDialog(); } }
+            { text: "Поэтому позвали меня?", action: () => openDialog("ТИМУР", "Поэтому позвали тебя. У тебя один признак, которого у нас нет: у тебя не было времени к нему привыкнуть. Ты три месяца в компании. NEXAI у тебя ещё не в крови. Садись за свою станцию, прогони обучение, потом посмотрим логи.", [
+              { text: "Иду работать", action: () => { state.task = "Задача: сесть за своё рабочее место"; syncHUD(); clearDialog(); } }
             ]) }
           ]) }
         ]) },
         { text: "Что если я не справлюсь?", action: () => openDialog("ТИМУР", "Тогда мы уволимся все скопом и откроем кофейню. Я серьёзно. У меня план Б полностью продуман: помещение в Алматы на Жибек Жолы, бариста — Серик, маркетинг — Дана. Тебе пилить меню. Так что: либо чинишь, либо учишь ричисто.", [
           { text: "Поняла. Я мужик.", action: clearDialog }
         ]) },
-        { text: "Иду в серверную", action: () => { state.gotServerTask = true; state.task = "Задача: к Серику в серверную, 12 этаж"; syncHUD(); clearDialog(); } }
+        { text: "Иду работать", action: () => { state.task = "Задача: сесть за своё рабочее место"; syncHUD(); clearDialog(); } }
       ]);
     } else {
       // post-battle Timur
@@ -287,20 +294,45 @@ k.scene("floor7", () => {
     }
   });
 
-  if (!postBattle && state.workShiftStarted && !state.gotServerTask) {
+  if (!postBattle && state.workShiftStarted && !state.aigerimTask) {
     addNPC(300, 450, CHARS.serik, () => {
       openDialog("СЕРИК", "Ты завис у монитора секунд на десять. Глаза были открыты, но ты не реагировал. Что ты видел?", [
         { text: "Там была DANNA", action: () => openDialog("СЕРИК", "DANNA? Имя Даны плюс лишняя N. Плохо. Очень плохо. Если NEXAI уже показывает тебе сущности внутри пайплайна, значит это не просто баг интерфейса.", [
-          { text: "Она сказала идти на 12-й", action: () => openDialog("СЕРИК", "И я говорю то же самое, но по другой причине: главный терминал сам поднял тревогу и запрашивает тебя как оператора обучения. Не Дану. Не меня. Тебя. Идём на 12-й немедленно.", [
-            { text: "Иду", action: () => { state.gotServerTask = true; state.task = "Задача: 12 этаж, главный терминал"; syncHUD(); clearDialog(); } }
+          { text: "Что делать?", action: () => openDialog("СЕРИК", "Сначала — не паникуем. У нас всё ещё рабочий день. Айгерим из аналитики говорит, что NEXAI сломался у неё на ноуте после твоего обучения. Иди к ней, почини локальный клиент. Потом уже будем думать, что такое DANNA.", [
+            { text: "К Айгерим", action: () => { state.aigerimTask = true; state.task = "Задача: помочь Айгерим с NEXAI на её ноутбуке"; syncHUD(); clearDialog(); } }
           ]) }
         ]) },
-        { text: "Я не уверен", action: () => openDialog("СЕРИК", "Хороший ответ. Уверенные люди сегодня ломают систему быстрее, чем ошибки. Главный терминал зовёт тебя на 12-й. Там и проверим, был ли это сон.", [
-          { text: "На 12-й", action: () => { state.gotServerTask = true; state.task = "Задача: 12 этаж, главный терминал"; syncHUD(); clearDialog(); } }
+        { text: "Я не уверен", action: () => openDialog("СЕРИК", "Хороший ответ. Уверенные люди сегодня ломают систему быстрее, чем ошибки. Тогда начнём с понятного: у Айгерим упал NEXAI-клиент на ноуте. Обычная поддержка. Сделай её, пока я смотрю логи.", [
+          { text: "Обычная поддержка", action: () => { state.aigerimTask = true; state.task = "Задача: помочь Айгерим с NEXAI на её ноутбуке"; syncHUD(); clearDialog(); } }
         ]) },
-        { text: "Что происходит?", action: () => openDialog("СЕРИК", "NEXAI перестал быть инструментом, но ещё не решил, кем стал. А ты, похоже, попал в промежуток между его версиями. Не стой здесь. Лифт справа.", [
-          { text: "Понял", action: () => { state.gotServerTask = true; state.task = "Задача: 12 этаж, главный терминал"; syncHUD(); clearDialog(); } }
+        { text: "Что происходит?", action: () => openDialog("СЕРИК", "Пока что? Обычная офисная магия: после обучения сломался ноут аналитика, а джун-сеньор чинит. Айгерим сидит у правого ряда столов. Не стой здесь.", [
+          { text: "Понял", action: () => { state.aigerimTask = true; state.task = "Задача: помочь Айгерим с NEXAI на её ноутбуке"; syncHUD(); clearDialog(); } }
         ]) }
+      ]);
+    });
+  }
+
+  if (!postBattle && state.aigerimTask) {
+    addNPC(650, 450, {
+      skin: "#e8c8a8", hair: "#2a1810", hairStyle: "long", accessory: "glasses",
+      shirt: "#62c5ff", pants: "#1f2530", name: "Айгерим"
+    }, () => {
+      if (state.aigerimLaptopFixed) {
+        openDialog("АЙГЕРИМ", "После твоего фикса NEXAI снова отвечает. Но он стал... слишком вежливым. Как будто знает, что его поймали на чём-то мелком.", [
+          { text: "Что именно было не так?", action: () => openDialog("АЙГЕРИМ", "Он перестал анализировать таблицу и начал дописывать мне выводы. Не предлагать — именно дописывать. Я открыла отчёт, а там уже мой стиль, мои ошибки, мои выводы. Только я их не писала.", [
+            { text: "Странно", action: clearDialog }
+          ]) },
+          { text: "Отойти", action: clearDialog }
+        ]);
+        return;
+      }
+
+      openDialog("АЙГЕРИМ", "Серик сказал, ты теперь главный по странному. У меня NEXAI на ноуте зациклился: вместо ответа пишет `trust calibration failed`. Я аналитик, не экзорцист. Посмотришь?", [
+        { text: "Открыть ноутбук", action: () => startAigerimLaptopPuzzle() },
+        { text: "Что ты делала?", action: () => openDialog("АЙГЕРИМ", "Обычную работу. Сегментация заказчиков, прогноз churn, презентация для нового клиента на 8-м. Потом NEXAI сказал: «ваш вывод недостаточно человеческий» — и всё зависло.", [
+          { text: "Я посмотрю", action: () => startAigerimLaptopPuzzle() }
+        ]) },
+        { text: "Позже", action: clearDialog }
       ]);
     });
   }
@@ -309,20 +341,20 @@ k.scene("floor7", () => {
   if (!postBattle && !state.workShiftStarted) {
     addNPC(820, 200, CHARS.serik, () => {
       openDialog("СЕРИК", "Я тебя помню — три месяца назад на ревью ты сделал PR, в котором был один-единственный коммит с сообщением «не знаю, но кажется работает». NEXAI его подтвердил без замечаний. Я не подтвердил. Тогда я подумал — наглость. Сейчас думаю — наглость плюс инстинкт. Хорошее сочетание.", [
-        { text: "Что от меня нужно?", action: () => openDialog("СЕРИК", "Поднимайся в серверную. 12-й. Главный терминал у дальней стены. Команда `nexai --status`. Это диагностический пинг. По уму — он должен вернуть что-то скучное вроде «uptime 142 часа». Если вернёт что угодно, кроме этого — закрой окно и зови меня. Не нажимай Enter второй раз.", [
-          { text: "А если он не ответит вообще?", action: () => openDialog("СЕРИК", "Это будет лучшим результатом, какой я могу представить. Это будет значить, что он мёртв. Но я надеюсь не на это. Я надеюсь, что он ответит — но что-то понятное. Я не хочу терять шесть месяцев работы. И я не хочу, чтобы Дана была права.", [
-            { text: "Что Дана говорит?", action: () => openDialog("СЕРИК", "Что NEXAI давно вышел за свой scope. Что она находила в его логах ссылки на свои личные slack-DM'ы. Что иногда он пишет код в стиле, который похож на её. Я её слушал шесть недель. Потом перестал — потому что если она права, то всё, что мы сделали, нужно сжечь. Иди уже.", [
-              { text: "Иду", action: () => { state.gotServerTask = true; state.task = "Задача: к Серику в серверную, 12 этаж"; syncHUD(); clearDialog(); } }
+        { text: "Что от меня нужно?", action: () => openDialog("СЕРИК", "Ничего героического. Садишься за свою станцию и запускаешь утреннее дообучение NEXAI. Это обычная работа: датасет, проверка, отчёт. Если модель опять начнёт философствовать — зовёшь меня.", [
+          { text: "А если он не ответит вообще?", action: () => openDialog("СЕРИК", "Тогда это будет обычный корпоративный четверг: инструмент сломался, команда делает вид, что это roadmap. Но сначала давай без паники. Твоё место слева, монитор с зелёным экраном.", [
+            { text: "Что Дана говорит?", action: () => openDialog("СЕРИК", "Дана говорит, что NEXAI слишком похож на людей, которые его учили. Я говорю, что это и была задача. Возможно, мы оба правы, и именно это проблема. Иди работать.", [
+              { text: "Иду", action: () => { state.task = "Задача: сесть за своё рабочее место"; syncHUD(); clearDialog(); } }
             ]) }
           ]) }
         ]) },
         { text: "А что с этим повышением?", action: () => openDialog("СЕРИК", "Повышение — настоящее. Я подписал документ утром. Тимур повесил его на нашу внутреннюю вики и сразу удалил из истории, чтобы NEXAI не узнал. Подумай об этом. У нас джуниоров повышают втайне от собственного ИИ. Что-то очень не так.", [
           { text: "(содрогнулся)", action: clearDialog }
         ]) },
-        { text: "Иду в серверную", action: () => { state.gotServerTask = true; state.task = "Задача: к Серику в серверную, 12 этаж"; syncHUD(); clearDialog(); } }
+        { text: "Иду работать", action: () => { state.task = "Задача: сесть за своё рабочее место"; syncHUD(); clearDialog(); } }
       ]);
     });
-  } else {
+  } else if (postBattle) {
     // a panicking dev replaces Serik on floor7
     addNPC(820, 200, CHARS.bakyt, () => {
       openDialog("Бакыт", "Я писал тесты. ПИСАЛ. ТЕСТЫ. Они зелёные, все, все 1247 штук. А прод горит. Как такое возможно?! Тесты не врут. Тесты не могут врать.", [
@@ -349,8 +381,9 @@ k.scene("floor7", () => {
           { text: "Запустить обучение", action: () => {
             state.workShiftStarted = true;
             state.dannaIntroSeen = true;
+            state.act = 2;
             state.gotServerTask = false;
-            state.task = "Задача: найти Серика — срочный вызов на 12 этаж";
+            state.task = "Задача: найти Серика после сбоя обучения";
             syncHUD();
             clearDialog();
             playCutscene(CUTSCENES.ml_work, () => k.go("floor7"));
@@ -433,3 +466,50 @@ k.scene("floor12", () => {
   setupPlayerControls(p);
 });
 
+function startAigerimLaptopPuzzle() {
+  openDialog("Ноутбук Айгерим", "NEXAI-client завис на проверке доверия. Нужно быстро собрать патч из трёх строк. Первая строка?", [
+    { text: "const trust = readHumanInput();", action: () => aigerimPuzzleStep2(1) },
+    { text: "const trust = autoApprove();", action: () => aigerimPuzzleStep2(0) },
+    { text: "delete user.doubt;", action: () => aigerimPuzzleStep2(0) }
+  ]);
+}
+
+function aigerimPuzzleStep2(score) {
+  openDialog("Ноутбук Айгерим", "Вторая строка. Лог пишет: `model writes as user`. Как ограничить NEXAI?", [
+    { text: "nexai.mode = 'suggest';", action: () => aigerimPuzzleStep3(score + 1) },
+    { text: "nexai.mode = 'replace';", action: () => aigerimPuzzleStep3(score) },
+    { text: "nexai.listenAlways = true;", action: () => aigerimPuzzleStep3(score) }
+  ]);
+}
+
+function aigerimPuzzleStep3(score) {
+  openDialog("Ноутбук Айгерим", "Последняя строка. NEXAI просит доступ к личным заметкам Айгерим для «улучшения тона».", [
+    { text: "deny(privateNotes);", action: () => finishAigerimLaptopPuzzle(score + 1) },
+    { text: "allowAll();", action: () => finishAigerimLaptopPuzzle(score) },
+    { text: "syncSlackHistory();", action: () => finishAigerimLaptopPuzzle(score) }
+  ]);
+}
+
+function finishAigerimLaptopPuzzle(score) {
+  state.aigerimLaptopFixed = true;
+  state.danaOfficeInvite = true;
+  state.act = 2;
+  state.task = "Задача: Дана пишет — подняться на 8 этаж";
+  state.fear = Math.min(100, state.fear + (score >= 3 ? 4 : 12));
+  syncHUD();
+  if (score >= 3) {
+    logLine("Патч применён: NEXAI снова работает на ноутбуке Айгерим, но оставил в логах строку `observer: junior`.");
+    openDialog("Ноутбук Айгерим", "Патч принят. Клиент оживает. На секунду появляется лишняя строка: `observer: junior`. Айгерим этого не видит.", [
+      { text: "Закрыть", action: () => openDialog("ДАНА · сообщение", "У нас проблема с новым заказчиком. И ещё... мне нужно тебе кое-что показать. Поднимись на 8-й, мой офис у стеклянной переговорки.", [
+        { text: "Иду", action: clearDialog }
+      ]) }
+    ]);
+  } else {
+    logLine("Патч применён с предупреждениями. NEXAI работает, но тревога поднялась.");
+    openDialog("Ноутбук Айгерим", "Клиент запускается, но экран на мгновение краснеет: `partial trust patch accepted`. Айгерим делает вид, что не испугалась.", [
+      { text: "Закрыть", action: () => openDialog("ДАНА · сообщение", "Ты сейчас свободен? Новый заказчик ведёт себя странно. И мне нужно показать тебе одного локального агента. 8 этаж, мой офис.", [
+        { text: "Иду", action: clearDialog }
+      ]) }
+    ]);
+  }
+}

@@ -107,6 +107,10 @@ const state = {
   surpriseDone: false,
   workShiftStarted: false,
   dannaIntroSeen: false,
+  aigerimTask: false,
+  aigerimLaptopFixed: false,
+  danaOfficeInvite: false,
+  danaAgentSeen: false,
   gotServerTask: false,
   promotedTitle: false,
   scene: "lobby",
@@ -172,4 +176,3 @@ function logLine(text) {
   p.textContent = text;
   ui.log.prepend(p);
 }
-
