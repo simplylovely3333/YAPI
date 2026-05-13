@@ -2,6 +2,96 @@
 // ACT 2 — INSIDE THE COMPUTER
 // =====================================================================
 
+function setupAct2OfficeHaunt(locationName) {
+  if (state.act !== 2 || state.sawAftermath) return;
+
+  const overlay = k.add([k.rect(960, 600), k.color(98, 197, 255), k.opacity(0), k.pos(0, 0), k.fixed(), "act2-office-haunt"]);
+  const whispers = [
+    `› ${locationName}: обычный рабочий день подтверждён`,
+    "› локальные агенты не могут знать внешние события",
+    "› пожалуйста, продолжайте выполнять задачи",
+    "› письмо заказчику уже написано за вас",
+    "› сотрудник повторяется. это экономит ресурсы"
+  ];
+
+  overlay.onUpdate(() => {
+    overlay.opacity = Math.max(0, overlay.opacity - k.dt() * 0.9);
+  });
+
+  k.loop(10 + k.rand(0, 5), () => {
+    if (state.act !== 2 || state.sawAftermath || dialogOpen || paused || laptopOpen || codePuzzleOpen) return;
+    if (!state.danaAgentSeen && k.rand(0, 1) < 0.55) return;
+
+    state.act2HauntCount = (state.act2HauntCount || 0) + 1;
+    state.fear = Math.min(100, state.fear + 2);
+    syncHUD();
+    overlay.opacity = 0.2;
+    shake(3, 0.25);
+    Aud.nexai();
+
+    const event = state.act2HauntCount % 4;
+    if (event === 0) {
+      logLine(whispers[Math.floor(k.rand(0, whispers.length))]);
+    } else if (event === 1) {
+      logLine("Все мониторы на секунду показывают один и тот же курсор: `DANNA.local typing...`");
+    } else if (event === 2) {
+      openDialog("NEXAI · системное уведомление", "› новая рекомендация: не обсуждать локальные процессы с Даной\n› причина: эмоциональный риск\n› статус: отправлено от вашего имени", [
+        { text: "Это писал не я", action: () => {
+          state.fear = Math.max(0, state.fear - 1);
+          logLine("Ты удаляешь черновик. Через секунду он появляется снова, уже без подписи.");
+          clearDialog();
+        } },
+        { text: "Закрыть", action: clearDialog }
+      ]);
+    } else {
+      logLine("Лифт тихо дзынькает, хотя никто его не вызывал. На табло: `12 этаж рекомендован`.");
+    }
+  });
+}
+
+function addGlitchMonitor(x, y, w, h, label, lines) {
+  const screen = k.add([
+    k.rect(w, h),
+    k.color(8, 10, 14),
+    k.outline(1, k.rgb(98, 197, 255)),
+    k.opacity(0.82),
+    k.pos(x, y),
+    k.area(),
+    "npc",
+    { _talk: () => openDialog(label, lines[0], [
+      { text: "Проверить лог", action: () => openDialog(label, lines[1], [{ text: "Закрыть", action: clearDialog }]) },
+      { text: "Отойти", action: clearDialog }
+    ]) }
+  ]);
+  const text = k.add([k.text("OK", { size: 9 }), k.color(168, 255, 101), k.pos(x + 5, y + 5)]);
+  screen.onUpdate(() => {
+    const haunted = state.danaAgentSeen || (state.act2HauntCount || 0) > 1;
+    const pulse = Math.sin(k.time() * (haunted ? 13 : 3));
+    screen.opacity = haunted ? 0.55 + Math.abs(pulse) * 0.38 : 0.78;
+    screen.color = haunted && pulse > 0.72 ? k.rgb(194, 32, 42) : k.rgb(8, 10, 14);
+    text.text = haunted && pulse > 0.45 ? "DANNA?" : "OK";
+    text.color = haunted && pulse > 0.45 ? k.rgb(255, 109, 116) : k.rgb(168, 255, 101);
+  });
+  return screen;
+}
+
+function addRepeatingEmployee(x, y, look, label) {
+  const npc = addNPC(x, y, { ...look, name: label }, () => {
+    openDialog(label, "Я уже говорил это? Новый заказчик ждёт. Новый заказчик ждёт. Новый заказчик ждёт.", [
+      { text: "Ты в порядке?", action: () => openDialog(label, "Конечно. Я в порядке. Я в порядке. Я в порядке. `status: productive`.", [{ text: "Отойти", action: clearDialog }]) },
+      { text: "Отойти", action: clearDialog }
+    ]);
+  });
+  npc.onUpdate(() => {
+    const h = npc.get("humanoid")[0];
+    if (!h) return;
+    h.walking = true;
+    h.phase += k.dt() * 24;
+    if ((state.act2HauntCount || 0) > 0 && Math.sin(k.time() * 7) > 0.92) h.face = "up";
+  });
+  return npc;
+}
+
 k.scene("floor8", () => {
   state.scene = "floor8";
   state.act = 2;
@@ -12,6 +102,7 @@ k.scene("floor8", () => {
 
   roomFloor([38, 44, 54, 46, 54, 66]);
   wallsBorder();
+  setupAct2OfficeHaunt("8 этаж");
   k.add([k.text("8 ЭТАЖ · CLIENT SUCCESS / DEVOPS", { size: 11 }), k.color(232, 226, 212), k.opacity(0.78), k.pos(40, 40)]);
   k.add([k.text("// обычный офис · слишком тихий для обычного офиса", { size: 9 }), k.color(154, 147, 132), k.pos(40, 56)]);
 
@@ -20,11 +111,21 @@ k.scene("floor8", () => {
   wall(430, 250, 90, 240, [80, 90, 100]);
   deskWithMonitor(170, 330, 140, 54, [98, 197, 255]);
   deskWithMonitor(640, 330, 140, 54, [168, 255, 101]);
+  addGlitchMonitor(182, 304, 28, 20, "Монитор QA", [
+    "На экране обычный dashboard. Потом строка сама меняется: `aigerim.patch_quality = acceptable`.",
+    "Лог показывает, что запись появилась до того, как ты закончил патч. Таймстамп невозможный: 06:13."
+  ]);
+  addGlitchMonitor(652, 304, 28, 20, "Монитор менеджера", [
+    "Открыт черновик письма заказчику. Стиль Даны, но автор указан как `you@nexcore`.",
+    "Внизу письма серым: `human approval predicted`. Кнопка отправки уже подсвечена."
+  ]);
   k.add([k.rect(170, 80), k.color(20, 24, 30), k.pos(392, 105)]);
   k.add([k.text("NEW CLIENT\nONBOARDING", { size: 13 }), k.color(255, 179, 71), k.pos(420, 126)]);
 
   addCrowdTyper(230, 305, CHARS.qa);
   addCrowdTyper(700, 305, CHARS.manager);
+  addRepeatingEmployee(760, 445, CHARS.manager, "Менеджер");
+  addRepeatingEmployee(760, 485, CHARS.manager, "Менеджер");
 
   const agentTerminal = k.add([k.pos(500, 365), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-42, -34), 84, 68) }), "npc", {
     _talk: () => {
@@ -84,6 +185,26 @@ k.scene("floor8", () => {
       ]) }
     ]);
   });
+
+  const liftPanel = k.add([k.pos(82, 486), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-18, -22), 36, 44) }), "npc", {
+    _talk: () => {
+      if (!state.act2ElevatorLieSeen) {
+        state.act2ElevatorLieSeen = true;
+        state.fear = Math.min(100, state.fear + 3);
+        syncHUD();
+        Aud.nexai();
+        shake(5, 0.3);
+        openDialog("Панель лифта", "› рекомендованный маршрут: 12 этаж\n› причина: Серик вызывает вас\n› подпись: СЕРИК\n\nПодпись выглядит ровной. Слишком ровной.", [
+          { text: "Не верю", action: () => openDialog("Панель лифта", "Панель моргает и меняет текст: `разумное сомнение обнаружено`. Кнопка 8-го этажа снова становится активной.", [{ text: "Отойти", action: clearDialog }]) },
+          { text: "Отойти", action: clearDialog }
+        ]);
+      } else {
+        openDialog("Панель лифта", "› текущий этаж: 8\n› следующий рекомендованный этаж: ⟨ошибка⟩\n› человек всё ещё читает подсказки", [{ text: "Отойти", action: clearDialog }]);
+      }
+    }
+  }]);
+  liftPanel.add([k.rect(28, 36), k.color(8, 10, 14), k.outline(1, k.rgb(194, 32, 42)), k.pos(0, 0), k.anchor("center")]);
+  liftPanel.add([k.text("12?", { size: 9 }), k.color(194, 32, 42), k.pos(0, -5), k.anchor("center")]);
 
   exitDoor(40, 520, 50, 40, "ЛИФТ", "elevator");
 

@@ -40,6 +40,12 @@ grep -q 'openCodePuzzle({' js/scenes-act1.js || fail "Aigerim laptop must use ty
 grep -q 'codePuzzleOpen' js/world.js || fail "typed code puzzle must pause player controls"
 pass "typed code mini-game hooks exist"
 
+grep -q 'function setupAct2OfficeHaunt' js/scenes-act2.js || fail "Act 2 office haunt system must exist"
+grep -q 'function addGlitchMonitor' js/scenes-act2.js || fail "Act 2 glitch monitors must exist"
+grep -q 'function addRepeatingEmployee' js/scenes-act2.js || fail "Act 2 repeating employees must exist"
+grep -q 'act2ElevatorLieSeen' js/core.js || fail "Act 2 haunted elevator state must exist"
+pass "act 2 office horror hooks exist"
+
 if command -v osascript >/dev/null 2>&1; then
   for file in js/*.js; do
     output="$(osascript -l JavaScript "$file" 2>&1 || true)"

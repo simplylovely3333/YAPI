@@ -113,6 +113,8 @@ const state = {
   aigerimLaptopFixed: false,
   danaOfficeInvite: false,
   danaAgentSeen: false,
+  act2HauntCount: 0,
+  act2ElevatorLieSeen: false,
   gotServerTask: false,
   promotedTitle: false,
   scene: "lobby",
