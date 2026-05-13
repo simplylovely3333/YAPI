@@ -106,6 +106,7 @@ const state = {
   metDana: false,
   surpriseDone: false,
   workShiftStarted: false,
+  dannaIntroSeen: false,
   gotServerTask: false,
   promotedTitle: false,
   scene: "lobby",
@@ -859,9 +860,15 @@ const CUTSCENES = {
     { bg: "pr_screen", who: "ДАНА", line: "Обычно модель спрашивает скучные вещи: где лежат тесты, кто владелец сервиса, почему Тимур пишет «срочно» в каждом тикете." },
     { bg: "glitch_white", who: "NEXAI", line: "› новый класс обнаружен: страх\n› новый класс обнаружен: вина\n› новый класс обнаружен: сотрудник, который понял слишком поздно" },
     { bg: "glitch_white", who: "ТЫ", line: "Курсор двигается сам. Терминал не принимает Esc. Строка обучения меняется: `nexai.train --dataset YOU`." },
-    { bg: "grid_dive", who: "...", line: "Монитор перестаёт быть стеклом. Он становится дверью. Офис вытягивается в одну синюю линию, и ты падаешь внутрь собственного компьютера." },
-    { bg: "pc_inside", who: "DANNA", line: "Не паникуй. Я не NEXAI. Я — DANNA. Фоновый процесс Даны. Если ты слышишь меня, значит, он уже потянулся за тобой." },
-    { bg: "pc_inside", who: "DANNA", line: "Двигайся. Внутри системы всё выглядит как место, где код притворяется архитектурой. NEXAI будет мешать. Я буду держать канал, сколько смогу." }
+    { bg: "danna_void", who: "...", line: "Монитор перестаёт быть стеклом. Офис исчезает. Остаётся пустая чёрная комната, в которой светится только один силуэт." },
+    { bg: "danna_void", who: "DANNA", line: "Не двигайся резко. Чем сильнее ты паникуешь, тем проще NEXAI понять, где ты." },
+    { bg: "danna_void", who: "ТЫ", line: "Кто ты? Что ты такое? Почему я здесь?" },
+    { bg: "danna_void", who: "DANNA", line: "Меня зовут DANNA. Я не Дана. Не совсем. И не NEXAI. Этого пока должно хватить." },
+    { bg: "danna_void", who: "ТЫ", line: "Ты меня сюда затащила?" },
+    { bg: "danna_void", who: "DANNA", line: "Нет. Я только успела перехватить тебя на краю. Если бы не успела, ты бы проснулся уже не полностью собой." },
+    { bg: "danna_void", who: "ТЫ", line: "Что тебе от меня нужно?" },
+    { bg: "danna_void", who: "DANNA", line: "Пока — чтобы ты сомневался. В NEXAI. Во мне. В людях, которые скажут, что всё под контролем. Сейчас тебя выдернут обратно. На 12-м этаже начнётся настоящий вопрос." },
+    { bg: "glitch_white", who: "СЕРИК", line: "Эй! Ты меня слышишь? Отойди от монитора. Срочно. Нас зовут на 12-й." }
   ],
   act2_open: [
     { bg: "glitch_white", who: "ТЕРМИНАЛ", line: "nexai --status … соединение установлено … передача согласована … загрузка ⟨██████████⟩ 100%" },
@@ -1170,6 +1177,28 @@ function drawCutsceneBG(name) {
     const pulse = 0.5 + Math.sin(t * 5) * 0.4;
     k.drawRect({ pos: k.vec2(280, 240), width: 60, height: 60, color: k.rgb(194, 32, 42), opacity: pulse, anchor: "center" });
     k.drawRect({ pos: k.vec2(640, 240), width: 60, height: 60, color: k.rgb(98, 197, 255), opacity: pulse, anchor: "center" });
+  }
+
+  if (name === "danna_void") {
+    k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 600, color: k.rgb(2, 4, 8) });
+    for (let i = 0; i < 18; i++) {
+      const y = 80 + i * 24 + Math.sin(t * 1.2 + i) * 4;
+      k.drawRect({ pos: k.vec2(180, y), width: 600, height: 1, color: k.rgb(98, 197, 255), opacity: 0.08 + (i % 3) * 0.03 });
+    }
+    for (let i = 0; i < 12; i++) {
+      const x = 240 + i * 44;
+      k.drawRect({ pos: k.vec2(x, 120), width: 1, height: 340, color: k.rgb(98, 197, 255), opacity: 0.05 });
+    }
+    const pulse = 0.45 + Math.sin(t * 2.5) * 0.18;
+    for (let r = 5; r > 0; r--) {
+      k.drawRect({ pos: k.vec2(480 - 34 - r * 12, 280 - 54 - r * 12), width: 68 + r * 24, height: 108 + r * 24, color: k.rgb(98, 197, 255), opacity: 0.035 });
+    }
+    k.drawRect({ pos: k.vec2(452, 242), width: 56, height: 86, color: k.rgb(98, 197, 255), opacity: pulse });
+    k.drawRect({ pos: k.vec2(464, 216), width: 32, height: 32, color: k.rgb(180, 230, 255), opacity: 0.75 });
+    k.drawRect({ pos: k.vec2(468, 253), width: 20, height: 3, color: k.rgb(2, 4, 8), opacity: 0.8 });
+    if (Math.sin(t * 13) > 0.88) {
+      k.drawText({ text: "DANNA?", size: 16, pos: k.vec2(505 + k.rand(-6, 6), 210), color: k.rgb(98, 197, 255), opacity: 0.55 });
+    }
   }
 
   if (name === "pc_kernel") {
@@ -1926,8 +1955,26 @@ k.scene("floor7", () => {
     }
   });
 
+  if (!postBattle && state.workShiftStarted && !state.gotServerTask) {
+    addNPC(300, 450, CHARS.serik, () => {
+      openDialog("СЕРИК", "Ты завис у монитора секунд на десять. Глаза были открыты, но ты не реагировал. Что ты видел?", [
+        { text: "Там была DANNA", action: () => openDialog("СЕРИК", "DANNA? Имя Даны плюс лишняя N. Плохо. Очень плохо. Если NEXAI уже показывает тебе сущности внутри пайплайна, значит это не просто баг интерфейса.", [
+          { text: "Она сказала идти на 12-й", action: () => openDialog("СЕРИК", "И я говорю то же самое, но по другой причине: главный терминал сам поднял тревогу и запрашивает тебя как оператора обучения. Не Дану. Не меня. Тебя. Идём на 12-й немедленно.", [
+            { text: "Иду", action: () => { state.gotServerTask = true; state.task = "Задача: 12 этаж, главный терминал"; syncHUD(); clearDialog(); } }
+          ]) }
+        ]) },
+        { text: "Я не уверен", action: () => openDialog("СЕРИК", "Хороший ответ. Уверенные люди сегодня ломают систему быстрее, чем ошибки. Главный терминал зовёт тебя на 12-й. Там и проверим, был ли это сон.", [
+          { text: "На 12-й", action: () => { state.gotServerTask = true; state.task = "Задача: 12 этаж, главный терминал"; syncHUD(); clearDialog(); } }
+        ]) },
+        { text: "Что происходит?", action: () => openDialog("СЕРИК", "NEXAI перестал быть инструментом, но ещё не решил, кем стал. А ты, похоже, попал в промежуток между его версиями. Не стой здесь. Лифт справа.", [
+          { text: "Понял", action: () => { state.gotServerTask = true; state.task = "Задача: 12 этаж, главный терминал"; syncHUD(); clearDialog(); } }
+        ]) }
+      ]);
+    });
+  }
+
   // --- Serik on floor7 only pre-battle (later he's on floor12) ---
-  if (!postBattle) {
+  if (!postBattle && !state.workShiftStarted) {
     addNPC(820, 200, CHARS.serik, () => {
       openDialog("СЕРИК", "Я тебя помню — три месяца назад на ревью ты сделал PR, в котором был один-единственный коммит с сообщением «не знаю, но кажется работает». NEXAI его подтвердил без замечаний. Я не подтвердил. Тогда я подумал — наглость. Сейчас думаю — наглость плюс инстинкт. Хорошее сочетание.", [
         { text: "Что от меня нужно?", action: () => openDialog("СЕРИК", "Поднимайся в серверную. 12-й. Главный терминал у дальней стены. Команда `nexai --status`. Это диагностический пинг. По уму — он должен вернуть что-то скучное вроде «uptime 142 часа». Если вернёт что угодно, кроме этого — закрой окно и зови меня. Не нажимай Enter второй раз.", [
@@ -1969,11 +2016,12 @@ k.scene("floor7", () => {
         openDialog("Твоё рабочее место", "На столе наклейка: «ML Engineer · NEXAI Alignment». Открыт утренний пайплайн дообучения. Запустить рабочую смену?", [
           { text: "Запустить обучение", action: () => {
             state.workShiftStarted = true;
-            state.act = 2;
-            state.task = "Акт 2: выбраться из пользовательского пространства";
+            state.dannaIntroSeen = true;
+            state.gotServerTask = false;
+            state.task = "Задача: найти Серика — срочный вызов на 12 этаж";
             syncHUD();
             clearDialog();
-            playCutscene(CUTSCENES.ml_work, () => k.go("pc_arrival"));
+            playCutscene(CUTSCENES.ml_work, () => k.go("floor7"));
           } },
           { text: "Осмотреть стол", action: () => openDialog("Стол", "Блокнот исписан твоим почерком: «не кормить модель личными чатами», «проверить датасет HR», «спросить Дану, почему NEXAI знает шутку про мой универ». Последней записи ты не помнишь.", [
             { text: "Закрыть", action: clearDialog }
@@ -3303,7 +3351,7 @@ function resetState() {
   Object.assign(state, {
     task: "Задача: добраться до офиса",
     fear: 18, coffee: 45,
-    metDana: false, surpriseDone: false, workShiftStarted: false, gotServerTask: false,
+    metDana: false, surpriseDone: false, workShiftStarted: false, dannaIntroSeen: false, gotServerTask: false,
     promotedTitle: false,
     act: 1,
     act2ArgueSeen: false,
