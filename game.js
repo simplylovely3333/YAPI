@@ -21,6 +21,7 @@ const k = kaplay({
 
 // ---------- side-panel DOM hooks ----------
 const ui = {
+  act: document.querySelector("#act"),
   task: document.querySelector("#task"),
   fear: document.querySelector("#fear"),
   coffee: document.querySelector("#coffee"),
@@ -116,6 +117,7 @@ const state = {
 
 const SAVE_KEY = "stack-overflow-act1-save";
 const SETTINGS_KEY = "stack-overflow-settings";
+let resumeFromSave = false;
 
 const settings = {
   volume: 0.6,
@@ -139,15 +141,28 @@ function loadGame() {
   if (!raw) return false;
   try {
     Object.assign(state, JSON.parse(raw));
+    resumeFromSave = true;
     syncHUD();
+    syncQuests();
     return true;
   } catch { return false; }
 }
 
 function syncHUD() {
+  if (ui.act) ui.act.textContent = `АКТ ${state.act || 1}: ${actTitle(state.act || 1)}`;
   ui.task.textContent = state.task;
   ui.fear.value = state.fear;
   ui.coffee.value = state.coffee;
+}
+
+function actTitle(act) {
+  const titles = {
+    1: "First Commit",
+    2: "Merge Conflict",
+    3: "Evidence Sprint",
+    4: "Deploy To Production"
+  };
+  return titles[act] || "Unknown Build";
 }
 
 function logLine(text) {
@@ -1427,8 +1442,12 @@ function wallsBorder() {
 // PLAYER + ROOM SETUP
 // =====================================================================
 function makePlayer(x, y) {
+  const spawn = resumeFromSave && state.playerPos
+    ? { x: state.playerPos.x, y: state.playerPos.y }
+    : { x, y };
+  resumeFromSave = false;
   const p = k.add([
-    k.pos(x, y),
+    k.pos(spawn.x, spawn.y),
     k.area({ shape: new k.Rect(k.vec2(-10, 6), 20, 16) }),
     k.body(),
     k.anchor("center"),
@@ -3149,6 +3168,7 @@ k.scene("act4_placeholder", () => {
 // STATE RESET
 // =====================================================================
 function resetState() {
+  resumeFromSave = false;
   Object.assign(state, {
     task: "Задача: добраться до офиса",
     fear: 18, coffee: 45,
@@ -3165,6 +3185,7 @@ function resetState() {
     talkedToBreakroom: false,
     foundDanaLaptop: false,
     scene: "lobby",
+    playerPos: { x: 120, y: 480 },
     quests: {},
     inventory: {},
     factions: { timur: 0, serik: 0, dana: 0, kamila: 0 }
