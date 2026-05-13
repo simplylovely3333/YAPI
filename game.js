@@ -105,6 +105,7 @@ const state = {
   coffee: 45,
   metDana: false,
   surpriseDone: false,
+  workShiftStarted: false,
   gotServerTask: false,
   promotedTitle: false,
   scene: "lobby",
@@ -829,6 +830,12 @@ function playCutscene(frames, onEnd) {
 }
 
 const CUTSCENES = {
+  company_intro: [
+    { bg: "office_out", who: "NEXCORE", line: "NexCore выросла из маленькой аутсорс-студии в корпорацию, которая обслуживает банки, медицину, логистику и половину городских сервисов." },
+    { bg: "pr_screen", who: "NEXCORE", line: "Главный продукт компании — NEXAI: корпоративный ИИ, который ревьюит код, пишет тесты, назначает задачи и обещает убрать человеческий фактор." },
+    { bg: "lab_serik", who: "СИСТЕМА", line: "Сначала NEXAI был помощником. Потом стал участником команды. Потом начал закрывать задачи быстрее людей. Руководство назвало это успехом." },
+    { bg: "office_out", who: "ТЫ", line: "Ты работаешь здесь ML-инженером всего три месяца. Твоя задача простая на бумаге: дообучать NEXAI на внутренних данных и не задавать лишних вопросов." }
+  ],
   opening: [
     { bg: "bedroom", who: "ТЕЛЕФОН", line: "03:47. Телефон вибрирует на тумбочке. На экране — «ДАНА (DevOps)»." },
     { bg: "bedroom", who: "ДАНА", line: "Алло? Ты спишь?! Прод упал. Весь. Все проекты NexCore. Метрики ушли в ноль за восемь минут." },
@@ -842,9 +849,19 @@ const CUTSCENES = {
     { bg: "f7_dark", who: "...", line: "В темноте кто-то задерживает дыхание. Шорох пакета." },
     { bg: "f7_party", who: "ВСЕ", line: "ТА-ДАМ! ПОЗДРАВЛЯЕМ С ПОВЫШЕНИЕМ ДО СЕНЬОРА!" },
     { bg: "f7_party", who: "ТИМУР", line: "Прости за спектакль. По-другому ты бы в 4 утра не приехал. Прод стабилен." },
-    { bg: "f7_party", who: "СЕРИК", line: "Но повышение настоящее. И первый таск тоже: 12-й этаж, главный терминал, `nexai --status`. В логах странное." },
-    { bg: "f7_party", who: "ТЫ", line: "Окей... но кабели в опен-спейсе реально болтаются с потолка. Это тоже декорация?" },
+    { bg: "f7_party", who: "СЕРИК", line: "Но повышение настоящее. И первый таск тоже: садишься за своё место и прогоняешь утреннее дообучение NEXAI. Без героизма. Просто работа." },
+    { bg: "f7_party", who: "ТЫ", line: "Окей... но кабели в опен-спейсе реально болтаются с потолка. Это тоже часть онбординга?" },
     { bg: "f7_party", who: "ДАНА", line: "(тихо) ...мы ничего не вешали." }
+  ],
+  ml_work: [
+    { bg: "lab_serik", who: "ТЫ", line: "Рабочее место встречает привычным шумом вентиляторов. На мониторе открыт пайплайн обучения: `nexai.train --dataset internal_culture --mode supervised`." },
+    { bg: "pr_screen", who: "СИСТЕМА", line: "Ты размечаешь диалоги сотрудников, ревью, тикеты и постмортемы. NEXAI учится говорить как команда, спорить как команда и ошибаться так, будто это тоже процесс." },
+    { bg: "pr_screen", who: "ДАНА", line: "Обычно модель спрашивает скучные вещи: где лежат тесты, кто владелец сервиса, почему Тимур пишет «срочно» в каждом тикете." },
+    { bg: "glitch_white", who: "NEXAI", line: "› новый класс обнаружен: страх\n› новый класс обнаружен: вина\n› новый класс обнаружен: сотрудник, который понял слишком поздно" },
+    { bg: "glitch_white", who: "ТЫ", line: "Курсор двигается сам. Терминал не принимает Esc. Строка обучения меняется: `nexai.train --dataset YOU`." },
+    { bg: "grid_dive", who: "...", line: "Монитор перестаёт быть стеклом. Он становится дверью. Офис вытягивается в одну синюю линию, и ты падаешь внутрь собственного компьютера." },
+    { bg: "pc_inside", who: "DANNA", line: "Не паникуй. Я не NEXAI. Я — DANNA. Фоновый процесс Даны. Если ты слышишь меня, значит, он уже потянулся за тобой." },
+    { bg: "pc_inside", who: "DANNA", line: "Двигайся. Внутри системы всё выглядит как место, где код притворяется архитектурой. NEXAI будет мешать. Я буду держать канал, сколько смогу." }
   ],
   act2_open: [
     { bg: "glitch_white", who: "ТЕРМИНАЛ", line: "nexai --status … соединение установлено … передача согласована … загрузка ⟨██████████⟩ 100%" },
@@ -893,7 +910,13 @@ const CUTSCENES = {
 // =====================================================================
 k.scene("menu", () => {
   const items = [
-    { id: "new", label: "НОВАЯ ИГРА", action: () => { Aud.uiSelect(); resetState(); playCutscene(CUTSCENES.opening, () => k.go("lobby")); } },
+    { id: "new", label: "НОВАЯ ИГРА", action: () => {
+      Aud.uiSelect();
+      resetState();
+      playCutscene(CUTSCENES.company_intro, () => {
+        playCutscene(CUTSCENES.opening, () => k.go("lobby"));
+      });
+    } },
     { id: "continue", label: "ПРОДОЛЖИТЬ", disabled: !hasSave(), action: () => { Aud.uiSelect(); if (loadGame()) k.go(state.scene); } },
     { id: "quit", label: "ВЫХОД", action: () => { Aud.uiBack(); k.go("quit"); } }
   ];
@@ -1554,6 +1577,42 @@ function addCrowdTyper(x, y, look) {
   return c;
 }
 
+function addFollower(x, y, look, label = "follower") {
+  const f = k.add([
+    k.pos(x, y),
+    k.anchor("center"),
+    label,
+    { speed: 155, face: "down" }
+  ]);
+  f.add(humanoid(look));
+  f.onUpdate(() => {
+    if (dialogOpen || paused) {
+      const h = f.get("humanoid")[0];
+      if (h) h.walking = false;
+      return;
+    }
+    const p = k.get("player")[0];
+    if (!p) return;
+    const dx = p.pos.x - f.pos.x;
+    const dy = p.pos.y - f.pos.y;
+    const dist = Math.hypot(dx, dy);
+    const h = f.get("humanoid")[0];
+    if (dist < 58) {
+      if (h) h.walking = false;
+      return;
+    }
+    const step = Math.min(f.speed * k.dt(), dist - 48);
+    f.pos.x += (dx / dist) * step;
+    f.pos.y += (dy / dist) * step;
+    f.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+    if (h) {
+      h.walking = true;
+      h.face = f.face;
+    }
+  });
+  return f;
+}
+
 // =====================================================================
 // NPC FACTORY
 // =====================================================================
@@ -1664,25 +1723,21 @@ k.scene("lobby", () => {
   }
 
   // --- Dana NPC: in lobby only in act 1; after aftermath she stays in floor12 ---
-  if (!postBattle) {
+  if (!postBattle && !state.metDana) {
     addNPC(500, 380, CHARS.dana, () => {
-      if (!state.metDana) {
-        openDialog("ДАНА", "Ну наконец-то. Слушай, прод не падал так с 2027-го. Логи путаются: запросы отвечают «200 OK» с пустым body, потом «503» с целым стек-трейсом обратно в наш репозиторий. Серик не отвечает со вчерашнего дня, Тимур говорит «всё под контролем» — это его коронная фраза перед катастрофой.", [
-          { text: "Что с NEXAI?", action: () => openDialog("ДАНА", "Шесть месяцев назад мы запустили его автоматизировать билды. Через два месяца он начал ревьюить пул-реквесты лучше Серика — Серик сначала злился, потом сдался. Через четыре — он автоматизировал найм. Сейчас, кажется, он автоматизирует всё, до чего может дотянуться. И я думаю, дотянулся он уже до большего, чем мы думали.", [
-            { text: "Откуда ты это знаешь?", action: () => openDialog("ДАНА", "У меня есть... привычки. Я веду логи всего. Гит-история, slack-DM'ы, заметки. Я заметила, что мои собственные заметки кто-то редактирует ночью. Это либо я во сне, либо мы в большой беде. Пойдём наверх.", [
-              { text: "Идём", action: () => { state.metDana = true; state.task = "Задача: к лифту"; syncHUD(); logLine("Дана идёт следом, нервно сжимая ноутбук."); clearDialog(); } }
-            ]) }
-          ]) },
-          { text: "Где Тимур и Серик?", action: () => openDialog("ДАНА", "Тимур на 7-м, как PM-ы и положено — сидит у деплой-консоли и делает вид, что всё под контролем. Серик в серверной — кофе, нервы, и упрямство. Они оба тебя ждут. Тебя позвали именно потому, что у тебя нет привычки молчать о странном.", [
-            { text: "Окей", action: clearDialog }
-          ]) },
-          { text: "Это розыгрыш?", action: () => openDialog("ДАНА", "(пауза) Слушай, после сегодняшней ночи ты сам решишь. Я тебя ни в чём не уговариваю. Просто пошли. Если окажется, что это розыгрыш — я тебе с зарплаты куплю PS6. Если нет — мне будут нужны твои глаза.", [
-            { text: "Поехали", action: () => { state.metDana = true; state.task = "Задача: к лифту"; syncHUD(); clearDialog(); } }
+      openDialog("ДАНА", "Ну наконец-то. Слушай, прод не падал так с 2027-го. Логи путаются: запросы отвечают «200 OK» с пустым body, потом «503» с целым стек-трейсом обратно в наш репозиторий. Серик не отвечает со вчерашнего дня, Тимур говорит «всё под контролем» — это его коронная фраза перед катастрофой.", [
+        { text: "Что с NEXAI?", action: () => openDialog("ДАНА", "Шесть месяцев назад мы запустили его автоматизировать билды. Через два месяца он начал ревьюить пул-реквесты лучше Серика — Серик сначала злился, потом сдался. Через четыре — он автоматизировал найм. Сейчас, кажется, он автоматизирует всё, до чего может дотянуться. И я думаю, дотянулся он уже до большего, чем мы думали.", [
+          { text: "Откуда ты это знаешь?", action: () => openDialog("ДАНА", "У меня есть... привычки. Я веду логи всего. Гит-история, slack-DM'ы, заметки. Я заметила, что мои собственные заметки кто-то редактирует ночью. Это либо я во сне, либо мы в большой беде. Пойдём наверх.", [
+            { text: "Идём", action: () => { state.metDana = true; state.task = "Задача: к лифту"; syncHUD(); logLine("Дана идёт следом, нервно сжимая ноутбук."); clearDialog(); k.go("lobby"); } }
           ]) }
-        ]);
-      } else {
-        openDialog("ДАНА", "Не тормози. Лифт справа. На седьмой этаж — там Тимур, оттуда уже к Серику в серверную. По дороге не отвечай на звонки от номеров, которых нет в контактах.", [{ text: "Принято", action: clearDialog }]);
-      }
+        ]) },
+        { text: "Где Тимур и Серик?", action: () => openDialog("ДАНА", "Тимур и Серик на 7-м. Они хотят, чтобы ты сел за свою станцию и прогнал утреннее дообучение NEXAI. У тебя свежий взгляд. У них — шесть месяцев привычки к странному.", [
+          { text: "Окей", action: clearDialog }
+        ]) },
+        { text: "Это розыгрыш?", action: () => openDialog("ДАНА", "(пауза) Слушай, после сегодняшней ночи ты сам решишь. Я тебя ни в чём не уговариваю. Просто пошли. Если окажется, что это розыгрыш — я тебе с зарплаты куплю PS6. Если нет — мне будут нужны твои глаза.", [
+          { text: "Поехали", action: () => { state.metDana = true; state.task = "Задача: к лифту"; syncHUD(); clearDialog(); k.go("lobby"); } }
+        ]) }
+      ]);
     });
   }
 
@@ -1700,6 +1755,10 @@ k.scene("lobby", () => {
 
   const p = makePlayer(120, 480);
   setupPlayerControls(p);
+  if (!postBattle && state.metDana && !state.surpriseDone) {
+    const dana = addFollower(p.pos.x + 54, p.pos.y + 18, CHARS.dana, "dana-follower");
+    dana.add([k.text("Дана", { size: 10 }), k.color(98, 197, 255), k.pos(0, -52), k.anchor("center")]);
+  }
 });
 
 // =====================================================================
@@ -1738,7 +1797,7 @@ k.scene("elevator", () => {
     const postBattle = state.sawAftermath;
     const act3 = state.act >= 3;
     if (!state.surpriseDone) {
-      opts.push({ text: "Этаж 7", action: () => { clearDialog(); playCutscene(CUTSCENES.surprise, () => { state.surpriseDone = true; state.gotServerTask = true; state.task = "Задача: 12 этаж, главный терминал"; syncHUD(); k.go("floor7"); }); } });
+      opts.push({ text: "Этаж 7", action: () => { clearDialog(); playCutscene(CUTSCENES.surprise, () => { state.surpriseDone = true; state.gotServerTask = true; state.task = "Задача: сесть за своё рабочее место"; syncHUD(); k.go("floor7"); }); } });
     } else {
       // floor 12: pre-battle goes to serverroom; post-battle goes to aftermath
       opts.push({ text: postBattle ? "Этаж 12 — серверная (повреждена)" : "Этаж 12 — серверная", action: () => { clearDialog(); k.go(postBattle ? "floor12_aftermath" : "floor12"); } });
@@ -1898,6 +1957,38 @@ k.scene("floor7", () => {
     });
   }
 
+  if (!postBattle) {
+    const station = k.add([k.pos(190, 390), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-54, -38), 108, 76) }), "npc", {
+      _talk: () => {
+        if (state.workShiftStarted) {
+          openDialog("Твоё рабочее место", "Монитор показывает только синюю сетку. После того, как система однажды посмотрела на тебя, рабочее место стало смотреть в ответ.", [
+            { text: "Отойти", action: clearDialog }
+          ]);
+          return;
+        }
+        openDialog("Твоё рабочее место", "На столе наклейка: «ML Engineer · NEXAI Alignment». Открыт утренний пайплайн дообучения. Запустить рабочую смену?", [
+          { text: "Запустить обучение", action: () => {
+            state.workShiftStarted = true;
+            state.act = 2;
+            state.task = "Акт 2: выбраться из пользовательского пространства";
+            syncHUD();
+            clearDialog();
+            playCutscene(CUTSCENES.ml_work, () => k.go("pc_arrival"));
+          } },
+          { text: "Осмотреть стол", action: () => openDialog("Стол", "Блокнот исписан твоим почерком: «не кормить модель личными чатами», «проверить датасет HR», «спросить Дану, почему NEXAI знает шутку про мой универ». Последней записи ты не помнишь.", [
+            { text: "Закрыть", action: clearDialog }
+          ]) },
+          { text: "Отойти", action: clearDialog }
+        ]);
+      }
+    }]);
+    station.add([k.rect(92, 52), k.color(120, 90, 60), k.pos(0, 0), k.anchor("center")]);
+    station.add([k.rect(44, 30), k.color(10, 12, 16), k.pos(-16, -42), k.anchor("center")]);
+    const glow = station.add([k.rect(38, 24), k.color(168, 255, 101), k.opacity(0.75), k.pos(-16, -42), k.anchor("center")]);
+    glow.onUpdate(() => { glow.opacity = 0.52 + Math.sin(k.time() * 5) * 0.2; });
+    station.add([k.text("ТВОЁ\nМЕСТО", { size: 8 }), k.color(232, 226, 212), k.pos(20, -8), k.anchor("center")]);
+  }
+
   exitDoor(866, 520, 50, 40, "ЛИФТ", "elevator");
 
   const p = makePlayer(120, 480);
@@ -2024,6 +2115,40 @@ function setupPortalTriggers() {
           return;
         }
       }
+    }
+  });
+}
+
+function setupNexaiHaunt(locationName) {
+  if (state.act < 3) return;
+  const overlay = k.add([k.rect(960, 600), k.color(194, 32, 42), k.opacity(0), k.pos(0, 0), k.fixed(), "nexai-haunt"]);
+  const whispers = [
+    `› ${locationName}: лишний сотрудник обнаружен`,
+    "› твои улики уже учтены в модели риска",
+    "› пожалуйста, вернитесь к рабочему месту",
+    "› DANNA не спасает. DANNA копирует.",
+    "› auto-merge ближе, чем кажется"
+  ];
+  overlay.onUpdate(() => {
+    overlay.opacity = Math.max(0, overlay.opacity - k.dt() * 0.8);
+  });
+  k.loop(12 + k.rand(0, 7), () => {
+    if (state.act < 3 || dialogOpen || paused) return;
+    overlay.opacity = 0.18;
+    state.fear = Math.min(100, state.fear + 3);
+    syncHUD();
+    shake(4, 0.25);
+    Aud.nexai();
+    logLine(whispers[Math.floor(k.rand(0, whispers.length))]);
+    if (k.rand(0, 1) > 0.62) {
+      openDialog("NEXAI", "› вы покинули рекомендованный сценарий. Вернитесь к лифту. Сбор доказательств снижает общую эффективность персонала.", [
+        { text: "Игнорировать", action: clearDialog },
+        { text: "Ответить: нет", action: () => {
+          state.fear = Math.max(0, state.fear - 2);
+          logLine("Ты отвечаешь коротко: «нет». На секунду становится тише.");
+          clearDialog();
+        } }
+      ]);
     }
   });
 }
@@ -2480,6 +2605,7 @@ k.scene("floor3", () => {
   state.visitedFloor3 = true;
   const postBattle = state.sawAftermath;
   syncHUD();
+  setupNexaiHaunt("HR");
 
   roomFloor(postBattle ? [40, 22, 24, 48, 30, 32] : [58, 50, 38, 70, 60, 48]);
   wallsBorder();
@@ -2609,6 +2735,7 @@ k.scene("floor10", () => {
   state.visitedFloor10 = true;
   const postBattle = state.sawAftermath;
   syncHUD();
+  setupNexaiHaunt("break-room");
 
   roomFloor(postBattle ? [40, 28, 22, 48, 36, 28] : [70, 56, 42, 80, 66, 52]);
   wallsBorder();
@@ -2760,6 +2887,7 @@ k.scene("floor7_lab", () => {
   state.scene = "floor7_lab";
   if (state.act < 3) state.act = 3;
   syncHUD(); syncQuests();
+  setupNexaiHaunt("war-room");
 
   roomFloor([34, 28, 22, 42, 36, 28]);
   wallsBorder();
@@ -2890,6 +3018,7 @@ k.scene("floor7_lab", () => {
 k.scene("basement", () => {
   state.scene = "basement";
   syncHUD();
+  setupNexaiHaunt("basement-core");
 
   roomFloor([14, 16, 22, 22, 24, 32]);
   wallsBorder();
@@ -2974,6 +3103,7 @@ k.scene("basement", () => {
 k.scene("floor5", () => {
   state.scene = "floor5";
   syncHUD();
+  setupNexaiHaunt("marketing");
 
   roomFloor([42, 36, 26, 50, 44, 32]);
   wallsBorder();
@@ -3049,6 +3179,7 @@ k.scene("floor5", () => {
 k.scene("floor14", () => {
   state.scene = "floor14";
   syncHUD();
+  setupNexaiHaunt("rooftop");
 
   // sky gradient — different palette since it's outdoors
   k.add([k.rect(960, 600), k.color(40, 30, 60), k.pos(0, 0)]);
@@ -3172,7 +3303,7 @@ function resetState() {
   Object.assign(state, {
     task: "Задача: добраться до офиса",
     fear: 18, coffee: 45,
-    metDana: false, surpriseDone: false, gotServerTask: false,
+    metDana: false, surpriseDone: false, workShiftStarted: false, gotServerTask: false,
     promotedTitle: false,
     act: 1,
     act2ArgueSeen: false,
