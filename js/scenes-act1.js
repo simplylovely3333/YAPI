@@ -467,27 +467,43 @@ k.scene("floor12", () => {
 });
 
 function startAigerimLaptopPuzzle() {
-  openDialog("Ноутбук Айгерим", "NEXAI-client завис на проверке доверия. Нужно быстро собрать патч из трёх строк. Первая строка?", [
-    { text: "const trust = readHumanInput();", action: () => aigerimPuzzleStep2(1) },
-    { text: "const trust = autoApprove();", action: () => aigerimPuzzleStep2(0) },
-    { text: "delete user.doubt;", action: () => aigerimPuzzleStep2(0) }
-  ]);
-}
-
-function aigerimPuzzleStep2(score) {
-  openDialog("Ноутбук Айгерим", "Вторая строка. Лог пишет: `model writes as user`. Как ограничить NEXAI?", [
-    { text: "nexai.mode = 'suggest';", action: () => aigerimPuzzleStep3(score + 1) },
-    { text: "nexai.mode = 'replace';", action: () => aigerimPuzzleStep3(score) },
-    { text: "nexai.listenAlways = true;", action: () => aigerimPuzzleStep3(score) }
-  ]);
-}
-
-function aigerimPuzzleStep3(score) {
-  openDialog("Ноутбук Айгерим", "Последняя строка. NEXAI просит доступ к личным заметкам Айгерим для «улучшения тона».", [
-    { text: "deny(privateNotes);", action: () => finishAigerimLaptopPuzzle(score + 1) },
-    { text: "allowAll();", action: () => finishAigerimLaptopPuzzle(score) },
-    { text: "syncSlackHistory();", action: () => finishAigerimLaptopPuzzle(score) }
-  ]);
+  openCodePuzzle({
+    title: "AIGERIM LAPTOP · NEXAI PATCH",
+    kicker: "// client frozen · trust validator broken",
+    steps: [
+      {
+        prompt: "NEXAI сам выбирает, кому доверять. Сначала заставь его читать ввод человека.",
+        answer: "const trust = readHumanInput();",
+        aliases: ["const trust=readHumanInput();"],
+        example: "const trust = readHumanInput();",
+        hint: "Нужна переменная trust и функция readHumanInput().",
+        success: "trust source switched: human input"
+      },
+      {
+        prompt: "В логах `model writes as user`. Переведи NEXAI в режим подсказок, чтобы он не писал за Айгерим.",
+        answer: "nexai.mode = 'suggest';",
+        aliases: ['nexai.mode = "suggest";', "nexai.mode='suggest';", 'nexai.mode="suggest";'],
+        example: "nexai.mode = 'suggest';",
+        hint: "Нужно назначить nexai.mode значение suggest.",
+        success: "write access downgraded: suggest only"
+      },
+      {
+        prompt: "NEXAI просит личные заметки Айгерим для «улучшения тона». Закрой доступ.",
+        answer: "deny(privateNotes);",
+        aliases: ["deny( privateNotes );"],
+        example: "deny(privateNotes);",
+        hint: "Используй deny(...) для privateNotes.",
+        success: "privateNotes access denied"
+      }
+    ],
+    onComplete: ({ score, mistakes }) => {
+      const finalScore = mistakes === 0 ? 3 : Math.max(1, score);
+      finishAigerimLaptopPuzzle(finalScore);
+    },
+    onCancel: () => {
+      logLine("Ты отошёл от ноутбука Айгерим. Патч NEXAI всё ещё ждёт ввода.");
+    }
+  });
 }
 
 function finishAigerimLaptopPuzzle(score) {

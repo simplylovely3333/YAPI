@@ -7,6 +7,8 @@ let paused = false;
 let pauseObjs = [];
 let laptopOpen = false;
 let laptopObjs = [];
+let codePuzzleOpen = false;
+let activeCodePuzzle = null;
 let shakeTime = 0, shakeIntensity = 0;
 
 function shake(intensity = 8, duration = 0.4) {
@@ -70,7 +72,7 @@ function closePause() {
 }
 
 function toggleLaptop() {
-  if (dialogOpen || paused) return;
+  if (dialogOpen || paused || codePuzzleOpen) return;
   if (laptopOpen) closeLaptop(); else openLaptop();
 }
 
@@ -117,6 +119,142 @@ function closeLaptop() {
   laptopObjs = [];
 }
 
+const codeTerminal = document.querySelector("#code-terminal");
+const codeTerminalTitle = document.querySelector("#code-terminal-title");
+const codeTerminalKicker = document.querySelector("#code-terminal-kicker");
+const codeTerminalLog = document.querySelector("#code-terminal-log");
+const codeTerminalForm = document.querySelector("#code-terminal-form");
+const codeTerminalInput = document.querySelector("#code-terminal-input");
+const codeTerminalClose = document.querySelector("#code-terminal-close");
+
+function normalizeCodeLine(line) {
+  return String(line || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\s*;\s*$/, "");
+}
+
+function appendCodeLine(text, kind = "system") {
+  if (!codeTerminalLog) return;
+  const p = document.createElement("p");
+  p.className = `terminal-line ${kind}`;
+  p.textContent = text;
+  codeTerminalLog.appendChild(p);
+  codeTerminalLog.scrollTop = codeTerminalLog.scrollHeight;
+}
+
+function codeStepMatches(step, value) {
+  const normalized = normalizeCodeLine(value);
+  const answers = [step.answer].concat(step.aliases || []);
+  return answers.some((answer) => normalizeCodeLine(answer) === normalized);
+}
+
+function renderCodeStep() {
+  const puzzle = activeCodePuzzle;
+  if (!puzzle) return;
+  const step = puzzle.steps[puzzle.stepIndex];
+  appendCodeLine("");
+  appendCodeLine(`[${puzzle.stepIndex + 1}/${puzzle.steps.length}] ${step.prompt}`, "system");
+  if (step.example) appendCodeLine(`ожидается: ${step.example}`, "hint");
+}
+
+function openCodePuzzle(config) {
+  if (!codeTerminal || !codeTerminalInput || !codeTerminalForm) {
+    openDialog(config.title || "Терминал", "HTML-терминал не найден. Нужен index.html с #code-terminal.", [
+      { text: "Закрыть", action: clearDialog }
+    ]);
+    return;
+  }
+  clearDialog();
+  closeLaptop();
+  codePuzzleOpen = true;
+  activeCodePuzzle = {
+    title: config.title || "PATCH CONSOLE",
+    kicker: config.kicker || "// remote laptop session",
+    steps: config.steps || [],
+    onComplete: config.onComplete || (() => {}),
+    onCancel: config.onCancel || (() => {}),
+    stepIndex: 0,
+    mistakes: 0
+  };
+  codeTerminalTitle.textContent = activeCodePuzzle.title;
+  codeTerminalKicker.textContent = activeCodePuzzle.kicker;
+  codeTerminalLog.innerHTML = "";
+  codeTerminal.hidden = false;
+  appendCodeLine("Соединение с ноутбуком Айгерим установлено.", "ok");
+  appendCodeLine("Пиши код сам. Enter запускает строку, RUN делает то же самое.", "system");
+  renderCodeStep();
+  codeTerminalInput.value = "";
+  setTimeout(() => codeTerminalInput.focus(), 0);
+  Aud.uiBlip();
+}
+
+function closeCodePuzzle(cancelled = true) {
+  if (!codePuzzleOpen) return;
+  const puzzle = activeCodePuzzle;
+  codePuzzleOpen = false;
+  activeCodePuzzle = null;
+  if (codeTerminal) codeTerminal.hidden = true;
+  if (cancelled && puzzle) puzzle.onCancel(puzzle);
+}
+
+function submitCodePuzzleLine() {
+  const puzzle = activeCodePuzzle;
+  if (!puzzle || !codeTerminalInput) return;
+  const value = codeTerminalInput.value;
+  const step = puzzle.steps[puzzle.stepIndex];
+  if (!normalizeCodeLine(value)) return;
+
+  appendCodeLine(`> ${value}`, "input");
+  codeTerminalInput.value = "";
+
+  if (codeStepMatches(step, value)) {
+    Aud.uiSelect();
+    appendCodeLine(step.success || "ok", "ok");
+    puzzle.stepIndex += 1;
+    if (puzzle.stepIndex >= puzzle.steps.length) {
+      const result = { mistakes: puzzle.mistakes, score: Math.max(0, puzzle.steps.length - puzzle.mistakes) };
+      appendCodeLine("Патч собран. Применяю изменения...", "ok");
+      setTimeout(() => {
+        closeCodePuzzle(false);
+        puzzle.onComplete(result);
+      }, 260);
+      return;
+    }
+    renderCodeStep();
+    return;
+  }
+
+  puzzle.mistakes += 1;
+  state.fear = Math.min(100, state.fear + 2);
+  syncHUD();
+  Aud.nexai();
+  appendCodeLine("Syntax accepted, intent rejected. NEXAI пытается подставить свою строку.", "err");
+  appendCodeLine(step.hint || "Подумай, как ограничить ИИ и защитить данные.", "hint");
+  shake(4, 0.25);
+}
+
+if (codeTerminalForm) {
+  codeTerminalForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    submitCodePuzzleLine();
+  });
+}
+if (codeTerminalInput) {
+  codeTerminalInput.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if (event.key === "Escape") closeCodePuzzle(true);
+  });
+}
+if (codeTerminalClose) {
+  codeTerminalClose.addEventListener("click", () => closeCodePuzzle(true));
+}
+if (codeTerminal) {
+  codeTerminal.addEventListener("keydown", (event) => event.stopPropagation());
+  codeTerminal.addEventListener("keyup", (event) => event.stopPropagation());
+}
+
 // global camera-shake tick
 k.onUpdate(() => applyShake());
 
@@ -131,7 +269,10 @@ function toggleFullscreen() {
 }
 k.onKeyPress("f", () => toggleFullscreen());
 k.onKeyPress("t", () => toggleLaptop());
-k.onKeyPress("escape", () => { if (laptopOpen) closeLaptop(); });
+k.onKeyPress("escape", () => {
+  if (codePuzzleOpen) return;
+  if (laptopOpen) closeLaptop();
+});
 
 function clearDialog() {
   dialogObjs.forEach((o) => o.destroy());

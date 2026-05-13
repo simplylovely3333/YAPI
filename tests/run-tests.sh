@@ -34,6 +34,12 @@ grep -q 'function openLaptop' js/dialog.js || fail "laptop UI must exist"
 grep -q 'saveGame();' js/dialog.js || fail "laptop must call saveGame"
 pass "laptop and floor8 hooks exist"
 
+grep -q 'id="code-terminal"' index.html || fail "typed code terminal must exist in index.html"
+grep -q 'function openCodePuzzle' js/dialog.js || fail "typed code puzzle helper must exist"
+grep -q 'openCodePuzzle({' js/scenes-act1.js || fail "Aigerim laptop must use typed code puzzle"
+grep -q 'codePuzzleOpen' js/world.js || fail "typed code puzzle must pause player controls"
+pass "typed code mini-game hooks exist"
+
 if command -v osascript >/dev/null 2>&1; then
   for file in js/*.js; do
     output="$(osascript -l JavaScript "$file" 2>&1 || true)"

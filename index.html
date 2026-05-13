@@ -49,6 +49,26 @@
           </div>
         </aside>
       </section>
+
+      <section class="code-terminal" id="code-terminal" aria-label="Мини-игра: ввод кода" hidden>
+        <div class="terminal-window">
+          <div class="terminal-head">
+            <div>
+              <p class="terminal-kicker" id="code-terminal-kicker">// remote laptop session</p>
+              <h2 id="code-terminal-title">PATCH CONSOLE</h2>
+            </div>
+            <button type="button" id="code-terminal-close" aria-label="Закрыть терминал">×</button>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-log" id="code-terminal-log" aria-live="polite"></div>
+            <form class="terminal-input-row" id="code-terminal-form" autocomplete="off">
+              <span>dev@aigerim:~$</span>
+              <input id="code-terminal-input" name="code" type="text" spellcheck="false" autocomplete="off" aria-label="Введите строку кода">
+              <button type="submit">RUN</button>
+            </form>
+          </div>
+        </div>
+      </section>
     </main>
 
     <script src="https://unpkg.com/kaplay@3001.0.18/dist/kaplay.js"></script>
