@@ -35,7 +35,7 @@ k.scene("floor8", () => {
         { text: "Отойти", action: clearDialog }
       ]);
     }
-  });
+  }]);
   agentTerminal.add([k.rect(84, 68), k.color(8, 10, 14), k.outline(1, k.rgb(98, 197, 255)), k.pos(0, 0), k.anchor("center")]);
   agentTerminal.add([k.text("DANNA\n.local", { size: 10 }), k.color(98, 197, 255), k.pos(0, -12), k.anchor("center")]);
 
