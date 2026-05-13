@@ -23,6 +23,8 @@ const k = kaplay({
 const ui = {
   act: document.querySelector("#act"),
   task: document.querySelector("#task"),
+  place: document.querySelector("#place"),
+  lastAction: document.querySelector("#last-action"),
   fear: document.querySelector("#fear"),
   coffee: document.querySelector("#coffee"),
   log: document.querySelector("#log"),
@@ -157,6 +159,7 @@ function loadGame() {
 function syncHUD() {
   if (ui.act) ui.act.textContent = `АКТ ${state.act || 1}: ${actTitle(state.act || 1)}`;
   ui.task.textContent = state.task;
+  if (ui.place) ui.place.textContent = `Локация: ${sceneTitle(state.scene)}`;
   ui.fear.value = state.fear;
   ui.coffee.value = state.coffee;
 }
@@ -171,8 +174,34 @@ function actTitle(act) {
   return titles[act] || "Unknown Build";
 }
 
+function sceneTitle(scene) {
+  const titles = {
+    menu: "главное меню",
+    lobby: "1 этаж · холл",
+    elevator: "лифт",
+    floor7: "7 этаж · разработка",
+    floor8: "8 этаж · офис Даны",
+    floor12: "12 этаж · серверная",
+    floor12_aftermath: "12 этаж · после сбоя",
+    pc_arrival: "userland",
+    pc_corridor: "цифровой коридор",
+    pc_memory: "архив памяти",
+    pc_kernel: "ядро",
+    pc_battle: "kernel panic",
+    floor3: "3 этаж · HR",
+    floor10: "10 этаж · комната отдыха",
+    floor7_lab: "7 этаж · war room",
+    basement: "подвал · ядро NEXAI",
+    floor5: "5 этаж · PR",
+    floor14: "14 этаж · крыша",
+    act4_placeholder: "акт 4"
+  };
+  return titles[scene] || scene || "—";
+}
+
 function logLine(text) {
   const p = document.createElement("p");
   p.textContent = text;
   ui.log.prepend(p);
+  if (ui.lastAction) ui.lastAction.textContent = `Последнее: ${text}`;
 }

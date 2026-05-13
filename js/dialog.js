@@ -5,6 +5,8 @@ let dialogOpen = false;
 let dialogObjs = [];
 let paused = false;
 let pauseObjs = [];
+let laptopOpen = false;
+let laptopObjs = [];
 let shakeTime = 0, shakeIntensity = 0;
 
 function shake(intensity = 8, duration = 0.4) {
@@ -67,6 +69,54 @@ function closePause() {
   pauseObjs = [];
 }
 
+function toggleLaptop() {
+  if (dialogOpen || paused) return;
+  if (laptopOpen) closeLaptop(); else openLaptop();
+}
+
+function openLaptop() {
+  if (laptopOpen) return;
+  laptopOpen = true;
+  Aud.uiBlip();
+  const rows = [
+    ["Локация", sceneTitle(state.scene)],
+    ["Задача", state.task],
+    ["Акт", `АКТ ${state.act || 1}: ${actTitle(state.act || 1)}`],
+    ["Тревога", `${Math.round(state.fear)}/100`]
+  ];
+
+  laptopObjs.push(k.add([k.rect(960, 600), k.color(0, 0, 0), k.opacity(0.72), k.pos(0, 0), k.fixed(), "laptop"]));
+  laptopObjs.push(k.add([k.rect(620, 390), k.color(8, 10, 14), k.opacity(0.96), k.outline(2, k.rgb(98, 197, 255)), k.pos(170, 100), k.fixed()]));
+  laptopObjs.push(k.add([k.text("NEXCORE LAPTOP", { size: 28 }), k.color(98, 197, 255), k.pos(480, 138), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("// local session · manual save", { size: 12 }), k.color(154, 147, 132), k.pos(480, 170), k.anchor("center"), k.fixed()]));
+
+  rows.forEach(([label, value], i) => {
+    const y = 220 + i * 34;
+    laptopObjs.push(k.add([k.text(`${label}:`, { size: 13 }), k.color(255, 179, 71), k.pos(220, y), k.fixed()]));
+    laptopObjs.push(k.add([k.text(String(value), { size: 13, width: 420 }), k.color(232, 226, 212), k.pos(330, y), k.fixed()]));
+  });
+
+  const saveBtn = k.add([k.rect(220, 38), k.color(20, 42, 52), k.outline(1, k.rgb(98, 197, 255)), k.pos(250, 400), k.area(), k.fixed(), "laptop-btn"]);
+  const closeBtn = k.add([k.rect(220, 38), k.color(42, 20, 24), k.outline(1, k.rgb(194, 32, 42)), k.pos(490, 400), k.area(), k.fixed(), "laptop-btn"]);
+  laptopObjs.push(saveBtn, closeBtn);
+  laptopObjs.push(k.add([k.text("СОХРАНИТЬ", { size: 15 }), k.color(232, 226, 212), k.pos(360, 419), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("ЗАКРЫТЬ", { size: 15 }), k.color(232, 226, 212), k.pos(600, 419), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("T / ESC закрыть · сохранение запоминает текущую сцену, позицию и прогресс", { size: 11 }), k.color(90, 84, 72), k.pos(480, 462), k.anchor("center"), k.fixed()]));
+
+  saveBtn.onClick(() => {
+    Aud.save();
+    saveGame();
+    closeLaptop();
+  });
+  closeBtn.onClick(closeLaptop);
+}
+
+function closeLaptop() {
+  laptopOpen = false;
+  laptopObjs.forEach((o) => { if (o.destroy) o.destroy(); });
+  laptopObjs = [];
+}
+
 // global camera-shake tick
 k.onUpdate(() => applyShake());
 
@@ -80,6 +130,8 @@ function toggleFullscreen() {
   }
 }
 k.onKeyPress("f", () => toggleFullscreen());
+k.onKeyPress("t", () => toggleLaptop());
+k.onKeyPress("escape", () => { if (laptopOpen) closeLaptop(); });
 
 function clearDialog() {
   dialogObjs.forEach((o) => o.destroy());
@@ -230,4 +282,3 @@ k.onKeyPress("down", () => { if (dialogOpen) nextDialogSelection(1); });
 k.onKeyPress("w", () => { if (dialogOpen) nextDialogSelection(-1); });
 k.onKeyPress("s", () => { if (dialogOpen) nextDialogSelection(1); });
 k.onButtonPress("interact", () => { if (dialogOpen) confirmDialogSelection(); });
-

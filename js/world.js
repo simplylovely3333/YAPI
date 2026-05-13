@@ -92,7 +92,7 @@ function makePlayer(x, y) {
 function setupPlayerControls(p) {
   p._stepT = 0;
   p.onUpdate(() => {
-    if (dialogOpen || paused) {
+    if (dialogOpen || paused || laptopOpen) {
       const h = p.get("humanoid")[0]; if (h) h.walking = false;
       return;
     }
@@ -120,7 +120,7 @@ function setupPlayerControls(p) {
   });
 
   k.onButtonPress("interact", () => {
-    if (dialogOpen) return;
+    if (dialogOpen || laptopOpen) return;
     // pick nearest interactable
     let best = null, bestD = 60;
     for (const npc of k.get("npc")) {
@@ -140,6 +140,7 @@ function setupPlayerControls(p) {
   });
 
   k.onKeyPress("escape", () => {
+    if (laptopOpen) return;
     if (dialogOpen) { clearDialog(); return; }
     togglePause();
   });
@@ -193,7 +194,7 @@ function addFollower(x, y, look, label = "follower") {
   ]);
   f.add(humanoid(look));
   f.onUpdate(() => {
-    if (dialogOpen || paused) {
+    if (dialogOpen || paused || laptopOpen) {
       const h = f.get("humanoid")[0];
       if (h) h.walking = false;
       return;
@@ -243,4 +244,3 @@ function addNPC(x, y, look, talk) {
   });
   return n;
 }
-
