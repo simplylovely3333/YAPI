@@ -101,31 +101,68 @@ function syncQuests() {
   }
 }
 
-const state = {
-  task: "Задача: добраться до офиса",
-  fear: 18,
-  coffee: 45,
-  metDana: false,
-  surpriseDone: false,
-  workShiftStarted: false,
-  dannaIntroSeen: false,
-  aigerimTask: false,
-  aigerimLaptopFixed: false,
-  danaOfficeInvite: false,
-  danaAgentSeen: false,
-  act2HauntCount: 0,
-  act2ElevatorLieSeen: false,
-  gotServerTask: false,
-  promotedTitle: false,
-  scene: "lobby",
-  playerPos: { x: 120, y: 480 },
-  act: 1,
-  quests: {},
-  inventory: {},
-  factions: { timur: 0, serik: 0, dana: 0, kamila: 0 }
-};
+function defaultState() {
+  return {
+    task: "Задача: добраться до офиса",
+    fear: 18,
+    coffee: 45,
+    // Act 0 — onboarding
+    interviewDone: false,
+    fd7Started: false,
+    fd7Nexai: false,
+    fd7Floors: false,
+    fd7Team: false,
+    act0Done: false,
+    // Act 1
+    metDana: false,
+    surpriseDone: false,
+    workShiftStarted: false,
+    dannaIntroSeen: false,
+    aigerimTask: false,
+    aigerimLaptopFixed: false,
+    danaOfficeInvite: false,
+    danaAgentSeen: false,
+    gotServerTask: false,
+    promotedTitle: false,
+    // Act 2
+    act2HauntCount: 0,
+    act2ElevatorLieSeen: false,
+    act2ArgueSeen: false,
+    floor8RepairBriefed: false,
+    floor8Fixed: false,
+    pcRepairStep: 0,
+    askedDana: false,
+    askedSerik: false,
+    sawAftermath: false,
+    // Act 3
+    visitedFloor3: false,
+    visitedFloor10: false,
+    talkedToHR: false,
+    talkedToBreakroom: false,
+    foundDanaLaptop: false,
+    // general
+    scene: "lobby",
+    playerPos: { x: 120, y: 480 },
+    act: 1,
+    quests: {},
+    inventory: {},
+    factions: { timur: 0, serik: 0, dana: 0, kamila: 0 }
+  };
+}
 
-const SAVE_KEY = "stack-overflow-act1-save";
+const state = defaultState();
+
+// normalize state.task strings — every assignment should look like "Задача: …"
+function setTask(t) {
+  if (!t) return;
+  state.task = /^Задача:|^Акт\s+\d/i.test(t) ? t : "Задача: " + t;
+  syncHUD && syncHUD();
+}
+
+// ---- save slots ----
+const SAVE_KEY = "stack-overflow-act1-save";   // legacy single-save key (migrated once)
+const SAVES_KEY = "stack-overflow-saves";       // array of { state, ts, label }
+const NUM_SAVE_SLOTS = 3;
 const SETTINGS_KEY = "stack-overflow-settings";
 let resumeFromSave = false;
 
@@ -136,30 +173,77 @@ const settings = {
 };
 function saveSettings() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
 
-function saveGame() {
-  const p = k.get("player")[0];
-  if (p) {
-    state.playerPos.x = p.pos.x;
-    state.playerPos.y = p.pos.y;
+function _readSaves() {
+  let raw = localStorage.getItem(SAVES_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch { /* corrupt */ }
   }
-  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-  logLine("// сохранение записано");
+  // one-time migration of the legacy single-save into slot 0
+  const legacy = localStorage.getItem(SAVE_KEY);
+  if (legacy) {
+    try {
+      const parsed = JSON.parse(legacy);
+      const slots = new Array(NUM_SAVE_SLOTS).fill(null);
+      slots[0] = { state: parsed, ts: Date.now(), label: "(перенесено)" };
+      localStorage.setItem(SAVES_KEY, JSON.stringify(slots));
+      localStorage.removeItem(SAVE_KEY);
+      return slots;
+    } catch { /* fallthrough */ }
+  }
+  return new Array(NUM_SAVE_SLOTS).fill(null);
 }
-function hasSave() { return !!localStorage.getItem(SAVE_KEY); }
-function loadGame() {
-  const raw = localStorage.getItem(SAVE_KEY);
-  if (!raw) return false;
-  try {
-    Object.assign(state, JSON.parse(raw));
-    resumeFromSave = true;
-    syncHUD();
-    syncQuests();
-    return true;
-  } catch { return false; }
+function _writeSaves(slots) { localStorage.setItem(SAVES_KEY, JSON.stringify(slots)); }
+
+function getSaveSlots() { return _readSaves(); }
+function hasAnySave() { return _readSaves().some((s) => s); }
+
+function saveToSlot(i) {
+  if (i < 0 || i >= NUM_SAVE_SLOTS) return false;
+  const p = k.get("player")[0];
+  if (p) { state.playerPos.x = p.pos.x; state.playerPos.y = p.pos.y; }
+  const slots = _readSaves();
+  slots[i] = {
+    state: JSON.parse(JSON.stringify(state)), // deep clone
+    ts: Date.now(),
+    label: `Акт ${state.act || 1} · ${state.scene || "?"}`
+  };
+  _writeSaves(slots);
+  logLine(`// сохранение записано в слот ${i + 1}`);
+  return true;
+}
+function loadFromSlot(i) {
+  const slots = _readSaves();
+  const slot = slots[i];
+  if (!slot || !slot.state) return false;
+  // wipe state completely so removed flags don't linger
+  for (const k of Object.keys(state)) delete state[k];
+  Object.assign(state, defaultState(), slot.state);
+  resumeFromSave = true;
+  syncHUD();
+  syncQuests();
+  return true;
+}
+function deleteSlot(i) {
+  const slots = _readSaves();
+  slots[i] = null;
+  _writeSaves(slots);
+}
+
+// legacy alias used in dialog.js / cutscenes.js so we don't have to touch every site
+function saveGame() { return saveToSlot(0); } // quick-save → slot 1
+function hasSave() { return hasAnySave(); }
+function loadGame() { // legacy: loads most-recent slot
+  const slots = _readSaves();
+  let bestI = -1, bestTs = -1;
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i] && slots[i].ts > bestTs) { bestTs = slots[i].ts; bestI = i; }
+  }
+  return bestI >= 0 ? loadFromSlot(bestI) : false;
 }
 
 function syncHUD() {
-  if (ui.act) ui.act.textContent = `АКТ ${state.act || 1}: ${actTitle(state.act || 1)}`;
+  const a = state.act == null ? 1 : state.act;
+  if (ui.act) ui.act.textContent = `АКТ ${a}: ${actTitle(a)}`;
   ui.task.textContent = state.task;
   if (ui.place) ui.place.textContent = `Локация: ${sceneTitle(state.scene)}`;
   ui.fear.value = state.fear;
@@ -168,6 +252,7 @@ function syncHUD() {
 
 function actTitle(act) {
   const titles = {
+    0: "Onboarding",
     1: "First Commit",
     2: "Merge Conflict",
     3: "Evidence Sprint",
@@ -178,6 +263,8 @@ function actTitle(act) {
 
 function sceneTitle(scene) {
   const titles = {
+    interview: "собеседование · HR",
+    firstday7: "7 этаж · первый день",
     menu: "главное меню",
     lobby: "1 этаж · холл",
     elevator: "лифт",

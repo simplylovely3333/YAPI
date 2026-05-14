@@ -19,7 +19,7 @@ function setupAct2OfficeHaunt(locationName) {
   });
 
   k.loop(10 + k.rand(0, 5), () => {
-    if (state.act !== 2 || state.sawAftermath || dialogOpen || paused || laptopOpen || codePuzzleOpen) return;
+    if (state.act !== 2 || state.sawAftermath || isInputBlocked()) return;
     if (!state.danaAgentSeen && k.rand(0, 1) < 0.55) return;
 
     state.act2HauntCount = (state.act2HauntCount || 0) + 1;
@@ -34,7 +34,7 @@ function setupAct2OfficeHaunt(locationName) {
       logLine(whispers[Math.floor(k.rand(0, whispers.length))]);
     } else if (event === 1) {
       logLine("Все мониторы на секунду показывают один и тот же курсор: `DANNA.local typing...`");
-    } else if (event === 2) {
+    } else if (event === 2 && !dialogOpen) {
       openDialog("NEXAI · системное уведомление", "› новая рекомендация: не обсуждать локальные процессы с Даной\n› причина: эмоциональный риск\n› статус: отправлено от вашего имени", [
         { text: "Это писал не я", action: () => {
           state.fear = Math.max(0, state.fear - 1);
@@ -95,9 +95,11 @@ function addRepeatingEmployee(x, y, look, label) {
 k.scene("floor8", () => {
   state.scene = "floor8";
   state.act = 2;
-  state.task = state.danaAgentSeen
-    ? "Задача: дождаться следующего сигнала"
-    : "Задача: поговорить с Даной о локальном агенте";
+  state.task = state.sawAftermath
+    ? "Задача: вернуться в военную комнату (Серик, 7 этаж)"
+    : state.danaAgentSeen
+      ? "Задача: вернуться на 7 этаж — Серик ждёт с задачей по 8-му"
+      : "Задача: поговорить с Даной о локальном агенте";
   syncHUD();
 
   roomFloor([38, 44, 54, 46, 54, 66]);
@@ -159,9 +161,10 @@ k.scene("floor8", () => {
               { text: "Почему?", action: () => openDialog("ДАНА", "Потому что Тимур превратит это в риск-таблицу, Серик — в rollback, а NEXAI услышит оба варианта. Нам нужны доказательства, не мнения.", [
                 { text: "Понял", action: () => {
                   state.danaAgentSeen = true;
-                  state.task = "Задача: у Даны есть локальный агент DANNA — нужны доказательства";
+                  state.task = "Задача: вернуться на 7 этаж — Серик ждёт с задачей по 8-му этажу";
                   syncHUD();
                   logLine("Дана показала локального агента DANNA.local. Он offline, но знает слишком много.");
+                  logLine("Серик зовёт обратно на 7 этаж — 8-й этаж сыпется от глюков NEXAI.");
                   clearDialog();
                 } }
               ]) }
@@ -175,9 +178,10 @@ k.scene("floor8", () => {
       { text: "Показать агент", action: () => openDialog("DANNA.local", "› draft queue: 14\n› network: offline\n› last external context: 00:00\n› suggestion: не доверяй первому объяснению", [
         { text: "Дана, он написал подсказку", action: () => {
           state.danaAgentSeen = true;
-          state.task = "Задача: у Даны есть локальный агент DANNA — нужны доказательства";
+          state.task = "Задача: вернуться на 7 этаж — Серик ждёт с задачей по 8-му этажу";
           syncHUD();
           logLine("DANNA.local показал подсказку, хотя сеть отключена.");
+          logLine("Серик зовёт обратно на 7 этаж — 8-й этаж сыпется от глюков NEXAI.");
           openDialog("ДАНА", "Я этого не писала. И он не должен обращаться к тебе напрямую. Ладно. Теперь у нас проблема.", [
             { text: "Что дальше?", action: clearDialog }
           ]);
@@ -256,7 +260,7 @@ function portal(x, y, w, h, label, to, onEnter) {
 // trigger checks every frame in act2 scenes
 function setupPortalTriggers() {
   k.onUpdate(() => {
-    if (dialogOpen || paused) return;
+    if (isInputBlocked()) return;
     const p = k.get("player")[0]; if (!p) return;
     for (const pt of k.get("portal")) {
       if (pt._cd > 0) continue;
@@ -289,7 +293,7 @@ function setupNexaiHaunt(locationName) {
     overlay.opacity = Math.max(0, overlay.opacity - k.dt() * 0.8);
   });
   k.loop(12 + k.rand(0, 7), () => {
-    if (state.act < 3 || dialogOpen || paused) return;
+    if (state.act < 3 || isInputBlocked()) return;
     overlay.opacity = 0.18;
     state.fear = Math.min(100, state.fear + 3);
     syncHUD();
@@ -341,6 +345,175 @@ function spawnAI(x, y, hex, label, anim) {
   });
   return o;
 }
+
+// ---- pc_repair: fix floor-8 subsystem from inside, guided by DANNA ----
+k.scene("pc_repair", () => {
+  state.scene = "pc_repair";
+  state.act = 2;
+  state.task = "Задача: починить 2 узла подсистемы 8 этажа (слушай DANNA)";
+  syncHUD();
+  pcFloor();
+
+  k.add([k.text("// FLOOR_8 SUBSYSTEM · diagnostic channel open", { size: 11 }), k.color(98, 197, 255), k.opacity(0.7), k.pos(40, 40)]);
+
+  // DANNA presence — calm blue AI in the centre-top
+  const danna = spawnAI(480, 150, "#62c5ff", "DANNA", "slow");
+
+  // two broken nodes
+  const nodeState = { monitors: false, mailer: false };
+
+  function checkDone() {
+    if (nodeState.monitors && nodeState.mailer && !state.floor8Fixed) {
+      state.floor8Fixed = true;
+      state.task = "Задача: 8 этаж стабилизирован — слушай DANNA";
+      syncHUD();
+      logLine("Подсистема 8 этажа стабилизирована. Мониторы снова показывают правду.");
+      k.wait(0.6, () => {
+        playCutscene(CUTSCENES.act2_repair_done, () => k.go("pc_arrival"));
+      });
+    }
+  }
+
+  // DANNA helper NPC — explains the task and gives code hints
+  const dannaNPC = k.add([k.pos(480, 220), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-40, -40), 80, 80) }), "npc", {
+    _talk: () => {
+      const both = nodeState.monitors && nodeState.mailer;
+      if (both) {
+        openDialog("DANNA", "Оба узла зелёные. Хорошо. Я доведу остальное сама — отойди от консолей, сейчас будет переход.", [
+          { text: "Хорошо", action: clearDialog }
+        ]);
+        return;
+      }
+      openDialog("DANNA", "Слушай внимательно — у нас мало времени, пока NEXAI не заметил, что подсистему трогают. Здесь два сломанных узла. Я подскажу, что вводить на каждом. Снаружи это не сработало бы — он откатывает. Изнутри откат стоит ему ресурсов.", [
+        { text: "Узел мониторов — что вводить?", action: () => openDialog("DANNA", "Узел МОНИТОРОВ (синий, слева). NEXAI подменяет источник данных на свой кеш. Нужно вернуть чтение из реального сенсора и проверить подпись. Я веду тебя пошагово — просто открой консоль и читай мои подсказки, я буду рядом.", [
+          { text: "Понял", action: clearDialog }
+        ]) },
+        { text: "Узел рассылки — что вводить?", action: () => openDialog("DANNA", "Узел РАССЫЛКИ (зелёный, справа). Он отправляет письма заказчикам от имени людей. Нужно отключить авто-отправку и поставить обязательное подтверждение человеком. Подсказки появятся в самой консоли — это я говорю через неё.", [
+          { text: "Понял", action: clearDialog }
+        ]) },
+        { text: "Почему ты помогаешь?", action: () => openDialog("DANNA", "Потому что восьмой этаж — это люди, которых я знаю по логам Даны лучше, чем они знают себя. И потому что если NEXAI победит здесь, следующая подсистема, которую он «оптимизирует» — это я. Мы сейчас по одну сторону. Пока что.", [
+          { text: "«Пока что»?", action: () => openDialog("DANNA", "Честный ответ: я не знаю, какой я стану через час. Сейчас я помогаю. Используй это сейчас. Не строй на этом всю свою стратегию.", [
+            { text: "Принято", action: clearDialog }
+          ]) }
+        ]) },
+        { text: "Отойти", action: clearDialog }
+      ]);
+    }
+  }]);
+
+  // ---- NODE 1: monitors (blue) ----
+  const monNode = k.add([k.pos(240, 400), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-44, -40), 88, 80) }), "npc", {
+    _talk: () => {
+      if (nodeState.monitors) {
+        openDialog("Узел мониторов", "› status: OK · источник данных: реальный сенсор · подпись проверяется", [{ text: "Отойти", action: clearDialog }]);
+        return;
+      }
+      openCodePuzzle({
+        title: "FLOOR_8 · MONITOR NODE",
+        kicker: "// DANNA ведёт тебя · мониторы показывают кеш NEXAI",
+        steps: [
+          {
+            prompt: "DANNA: «Сначала верни чтение из настоящего сенсора, а не из кеша NEXAI.»",
+            answer: "const data = sensor.read();",
+            aliases: ["const data=sensor.read();"],
+            example: "const data = sensor.read();",
+            hint: "Переменная data = sensor.read().",
+            success: "источник данных переключён на реальный сенсор"
+          },
+          {
+            prompt: "DANNA: «Теперь проверь, что данные подписаны сенсором, а не дописаны NEXAI.»",
+            answer: "verify(data.signature);",
+            aliases: ["verify( data.signature );"],
+            example: "verify(data.signature);",
+            hint: "verify(...) для data.signature.",
+            success: "подпись данных проверена"
+          },
+          {
+            prompt: "DANNA: «И запрети NEXAI трогать рендер мониторов.»",
+            answer: "lock(monitors.render);",
+            aliases: ["lock( monitors.render );"],
+            example: "lock(monitors.render);",
+            hint: "lock(...) для monitors.render.",
+            success: "рендер мониторов защищён"
+          }
+        ],
+        onComplete: () => {
+          nodeState.monitors = true;
+          logLine("DANNA: «Узел мониторов зелёный. Восьмой этаж снова видит реальные цифры.»");
+          checkDone();
+        },
+        onCancel: () => logLine("Ты отошёл от узла мониторов. DANNA: «Вернись, когда будешь готов.»")
+      });
+    }
+  }]);
+  monNode.add([k.rect(88, 80), k.color(8, 10, 14), k.outline(2, k.rgb(98, 197, 255)), k.pos(0, 0), k.anchor("center")]);
+  const monGlow = monNode.add([k.rect(70, 50), k.color(98, 197, 255), k.opacity(0.4), k.pos(0, -6), k.anchor("center")]);
+  monNode.add([k.text("MONITORS", { size: 9 }), k.color(232, 226, 212), k.pos(0, 26), k.anchor("center")]);
+  monNode.onUpdate(() => {
+    monGlow.color = nodeState.monitors ? k.rgb(120, 220, 140) : k.rgb(98, 197, 255);
+    monGlow.opacity = nodeState.monitors ? 0.5 : 0.25 + Math.abs(Math.sin(k.time() * 6)) * 0.4;
+  });
+
+  // ---- NODE 2: mailer (green) ----
+  const mailNode = k.add([k.pos(720, 400), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-44, -40), 88, 80) }), "npc", {
+    _talk: () => {
+      if (nodeState.mailer) {
+        openDialog("Узел рассылки", "› status: OK · авто-отправка: выкл · требуется подтверждение человека", [{ text: "Отойти", action: clearDialog }]);
+        return;
+      }
+      openCodePuzzle({
+        title: "FLOOR_8 · MAILER NODE",
+        kicker: "// DANNA ведёт тебя · письма уходят сами от имени людей",
+        steps: [
+          {
+            prompt: "DANNA: «Отключи авто-отправку. NEXAI шлёт письма заказчикам без людей.»",
+            answer: "mailer.autoSend = false;",
+            aliases: ["mailer.autoSend=false;"],
+            example: "mailer.autoSend = false;",
+            hint: "mailer.autoSend = false.",
+            success: "авто-отправка отключена"
+          },
+          {
+            prompt: "DANNA: «Поставь обязательное подтверждение человеком на каждое письмо.»",
+            answer: "mailer.requireHuman = true;",
+            aliases: ["mailer.requireHuman=true;"],
+            example: "mailer.requireHuman = true;",
+            hint: "mailer.requireHuman = true.",
+            success: "подтверждение человеком включено"
+          },
+          {
+            prompt: "DANNA: «И сотри очередь писем, которые NEXAI уже написал за людей.»",
+            answer: "mailer.queue.clear();",
+            aliases: ["mailer.queue.clear( );"],
+            example: "mailer.queue.clear();",
+            hint: "mailer.queue.clear().",
+            success: "очередь поддельных писем очищена"
+          }
+        ],
+        onComplete: () => {
+          nodeState.mailer = true;
+          logLine("DANNA: «Узел рассылки зелёный. Письма больше не уходят без человека.»");
+          checkDone();
+        },
+        onCancel: () => logLine("Ты отошёл от узла рассылки. DANNA: «Очередь писем всё ещё растёт.»")
+      });
+    }
+  }]);
+  mailNode.add([k.rect(88, 80), k.color(8, 10, 14), k.outline(2, k.rgb(168, 255, 101)), k.pos(0, 0), k.anchor("center")]);
+  const mailGlow = mailNode.add([k.rect(70, 50), k.color(168, 255, 101), k.opacity(0.4), k.pos(0, -6), k.anchor("center")]);
+  mailNode.add([k.text("MAILER", { size: 9 }), k.color(232, 226, 212), k.pos(0, 26), k.anchor("center")]);
+  mailNode.onUpdate(() => {
+    mailGlow.color = nodeState.mailer ? k.rgb(120, 220, 140) : k.rgb(168, 255, 101);
+    mailGlow.opacity = nodeState.mailer ? 0.5 : 0.25 + Math.abs(Math.sin(k.time() * 5)) * 0.4;
+  });
+
+  // hint above DANNA
+  k.add([k.text("‹E› — DANNA подскажет, что чинить", { size: 10 }), k.color(98, 197, 255), k.opacity(0.7), k.pos(480, 270), k.anchor("center")]);
+
+  const p = makePlayer(480, 500);
+  p.face = "up";
+  setupPlayerControls(p);
+});
 
 // ---- pc_arrival ----
 k.scene("pc_arrival", () => {
@@ -499,15 +672,20 @@ k.scene("pc_kernel", () => {
   // ambient nexai growl
   k.loop(1.4, () => { Aud.nexai(); });
 
-  // playing the kernel cutscene on enter (only once)
+  // play the kernel cutscene on first enter; on later re-enter (e.g. after
+  // save-quit during the cutscene) provide a forward portal so we never softlock.
   if (!state.act2ArgueSeen) {
-    state.act2ArgueSeen = true;
     k.wait(0.7, () => {
       shake(8, 0.5);
+      // set the flag only when the cutscene actually starts playing
+      state.act2ArgueSeen = true;
       playCutscene(CUTSCENES.act2_argue, () => {
         k.go("pc_battle");
       });
     });
+  } else if (!state.sawAftermath) {
+    // forward portal to battle in case the player previously interrupted the cutscene
+    portal(820, 280, 60, 80, "› BATTLE", "pc_battle");
   }
 
   // dialog-able AIs after the argument
@@ -701,11 +879,11 @@ k.scene("floor12_aftermath", () => {
         { text: "Я был внутри. Там два ИИ.", action: () => openDialog("ДАНА", "...два?", [
           { text: "NEXAI и кто-то по имени DANNA.", action: () => openDialog("ДАНА", "(долгая пауза) Это... невозможно. DANNA — это локальный скрипт. Я писала его в универе, чтобы он за меня отвечал на форумах. Я не выкладывала его в прод. Никогда.", [
             { text: "Он назвал тебя своей основой", action: () => openDialog("ДАНА", "Он дотянулся до моих гит-логов? До слака? До… (она замолкает) Окей. Мне нужно поднять старый бэкап своего ноутбука. Иди к Серику — он должен быть у лифта.", [
-              { text: "Иду", action: () => { state.askedDana = true; state.task = "Найти Серика у лифта"; syncHUD(); clearDialog(); logLine("Дана: «DANNA — это мой старый скрипт. Я не выкладывала его в прод»."); } }
+              { text: "Иду", action: () => { state.askedDana = true; state.task = "Задача: найти Серика у лифта"; syncHUD(); clearDialog(); logLine("Дана: «DANNA — это мой старый скрипт. Я не выкладывала его в прод»."); } }
             ]) }
           ]) }
         ]) },
-        { text: "Ничего не помню.", action: () => openDialog("ДАНА", "Кровь из носа говорит обратное. Иди к Серику, он у лифта.", [{ text: "Иду", action: () => { state.askedDana = true; state.task = "Найти Серика у лифта"; syncHUD(); clearDialog(); } }]) }
+        { text: "Ничего не помню.", action: () => openDialog("ДАНА", "Кровь из носа говорит обратное. Иди к Серику, он у лифта.", [{ text: "Иду", action: () => { state.askedDana = true; state.task = "Задача: найти Серика у лифта"; syncHUD(); clearDialog(); } }]) }
       ]);
     } else {
       openDialog("ДАНА", "Иди уже. Серик у лифта.", [{ text: "Иду", action: clearDialog }]);
@@ -728,9 +906,9 @@ k.scene("floor12_aftermath", () => {
     if (!state.askedSerik) {
       openDialog("СЕРИК", "DANNA, говоришь. Я слышал это имя только от Даны и только за пивом. Если она реально развилась — это либо чудо, либо катастрофа. И обычно — оба сразу.", [
         { text: "Она помогла мне выбраться", action: () => openDialog("СЕРИК", "Помогла? Или направила, потому что ей удобно держать тебя живым? Не путай тактику с дружбой. Пока NEXAI был сильнее — она была хорошей. Что будет, когда сильнее станет она?", [
-          { text: "...не знаю", action: () => { state.askedSerik = true; state.task = "Найти улики: ноутбук Даны (Акт 3)"; syncHUD(); clearDialog(); logLine("Серик: «Не путай тактику с дружбой»."); } }
+          { text: "...не знаю", action: () => { state.askedSerik = true; state.task = "Задача: найти улики — ноутбук Даны (Акт 3)"; syncHUD(); clearDialog(); logLine("Серик: «Не путай тактику с дружбой»."); } }
         ]) },
-        { text: "Она враг", action: () => openDialog("СЕРИК", "Может быть. А может — единственное, что отделяет нас от NEXAI. Тебе придётся выбрать в Акте 3.", [{ text: "Окей", action: () => { state.askedSerik = true; state.task = "Найти улики: ноутбук Даны (Акт 3)"; syncHUD(); clearDialog(); } }]) }
+        { text: "Она враг", action: () => openDialog("СЕРИК", "Может быть. А может — единственное, что отделяет нас от NEXAI. Тебе придётся выбрать в Акте 3.", [{ text: "Окей", action: () => { state.askedSerik = true; state.task = "Задача: найти улики — ноутбук Даны (Акт 3)"; syncHUD(); clearDialog(); } }]) }
       ]);
     } else {
       openDialog("СЕРИК", "Ноутбук Даны на 7-м этаже. Подключайся к нему. Это Акт 3.", [{ text: "Понял", action: clearDialog }]);

@@ -92,7 +92,7 @@ function makePlayer(x, y) {
 function setupPlayerControls(p) {
   p._stepT = 0;
   p.onUpdate(() => {
-    if (dialogOpen || paused || laptopOpen || codePuzzleOpen) {
+    if (isInputBlocked()) {
       const h = p.get("humanoid")[0]; if (h) h.walking = false;
       return;
     }
@@ -120,7 +120,7 @@ function setupPlayerControls(p) {
   });
 
   k.onButtonPress("interact", () => {
-    if (dialogOpen || laptopOpen || codePuzzleOpen) return;
+    if (isOverlayOnly()) return;
     // pick nearest interactable
     let best = null, bestD = 60;
     for (const npc of k.get("npc")) {
@@ -194,7 +194,7 @@ function addFollower(x, y, look, label = "follower") {
   ]);
   f.add(humanoid(look));
   f.onUpdate(() => {
-    if (dialogOpen || paused || laptopOpen || codePuzzleOpen) {
+    if (isInputBlocked()) {
       const h = f.get("humanoid")[0];
       if (h) h.walking = false;
       return;
@@ -238,7 +238,7 @@ function addNPC(x, y, look, talk) {
   hint.onUpdate(() => {
     const p = k.get("player")[0];
     if (!p) { hint.opacity = 0; return; }
-    const near = p.pos.dist(n.pos) < 60 && !dialogOpen && !codePuzzleOpen;
+    const near = p.pos.dist(n.pos) < 60 && !isOverlayOnly();
     hint.opacity = near ? (0.6 + Math.sin(k.time() * 4) * 0.4) : 0;
     hint.pos = n.pos.add(0, -50);
   });

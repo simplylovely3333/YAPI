@@ -9,6 +9,15 @@ let laptopOpen = false;
 let laptopObjs = [];
 let codePuzzleOpen = false;
 let activeCodePuzzle = null;
+
+// single source of truth — any UI modal that should freeze movement & interactions
+function isInputBlocked() {
+  return dialogOpen || paused || laptopOpen || codePuzzleOpen;
+}
+function isOverlayOnly() {
+  // ignores `paused` — used where we still want the game to *render* under pause
+  return dialogOpen || laptopOpen || codePuzzleOpen;
+}
 let shakeTime = 0, shakeIntensity = 0;
 
 function shake(intensity = 8, duration = 0.4) {
@@ -35,7 +44,8 @@ function openPause() {
   const isFs = !!document.fullscreenElement;
   const items = [
     { label: "ПРОДОЛЖИТЬ", action: () => { Aud.uiSelect(); closePause(); } },
-    { label: "СОХРАНИТЬ", action: () => { Aud.save(); saveGame(); } },
+    { label: "СОХРАНИТЬ (выбрать слот)", action: () => { Aud.uiSelect(); const here = state.scene; closePause(); k.go("saves", { mode: "save", returnTo: here }); } },
+    { label: "ЗАГРУЗИТЬ", action: () => { if (!hasAnySave()) { Aud.uiBack(); return; } Aud.uiSelect(); const here = state.scene; closePause(); k.go("saves", { mode: "load", returnTo: here }); } },
     { label: isFs ? "ВЫЙТИ ИЗ FULLSCREEN" : "FULLSCREEN (F)", action: () => { toggleFullscreen(); Aud.uiBlip(); closePause(); } },
     { label: settings.muted ? "ВКЛЮЧИТЬ ЗВУК" : "ВЫКЛЮЧИТЬ ЗВУК", action: () => { settings.muted = !settings.muted; saveSettings(); Aud.uiBlip(); closePause(); openPause(); } },
     { label: "В ГЛАВНОЕ МЕНЮ", action: () => { Aud.uiBack(); closePause(); k.go("menu"); } }

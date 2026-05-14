@@ -6,6 +6,19 @@ function playCutscene(frames, onEnd) {
 }
 
 const CUTSCENES = {
+  act0_metro: [
+    { bg: "metro", who: "ТЫ", line: "Вагон метро. Утро. Ты едешь никуда конкретно — просто едешь, потому что дома сидеть стыдно. В руке телефон. На телефоне — сайт вакансий." },
+    { bg: "phone_jobs", who: "ТЕЛЕФОН", line: "«Грузчик. Без опыта.» Листаешь. «Промоутер ростовой куклы.» Листаешь. «Тестировщик кормов для котов.» Листаешь." },
+    { bg: "phone_jobs", who: "ТЕЛЕФОН", line: "«NexCore — крупная IT-компания. Ищем сотрудника. Опыт не важен. Образование не важно. Резюме не важно. Главное — будьте собой.»" },
+    { bg: "phone_jobs", who: "ТЫ", line: "«Опыт не важен» — это про меня. «Будьте собой» — ну, выбора особо нет. Жму «Откликнуться»." },
+    { bg: "phone_jobs", who: "NEXCORE", line: "› отклик получен · обработка · обработка · готово\n› ВЫ ОДОБРЕНЫ. собеседование сегодня. адрес уже в вашем календаре. мы знали, что вы согласитесь." },
+    { bg: "office_door", who: "ТЫ", line: "Стеклянная башня NexCore. Над входом светится логотип. Дверь открывается сама — будто меня ждали. Захожу." }
+  ],
+  act0_hired: [
+    { bg: "office_door", who: "АЙГЕРИМ", line: "Поздравляю! Вы приняты. Честно говоря, вы могли вообще ничего не отвечать — NEXAI уже всё за нас решил. Но мне нравится соблюдать ритуал." },
+    { bg: "office_door", who: "АЙГЕРИМ", line: "Ваш первый рабочий день — прямо сейчас. Поднимайтесь на 7-й этаж, отдел разработки. Вас встретит Серик. Не бойтесь, он только выглядит строгим." },
+    { bg: "office_door", who: "ТЫ", line: "У меня нет ни опыта, ни образования, ни понимания, что такое «отдел разработки». Но зарплату обещали. Поднимаюсь." }
+  ],
   company_intro: [
     { bg: "office_out", who: "NEXCORE", line: "NexCore выросла из маленькой аутсорс-студии в корпорацию, которая обслуживает банки, медицину, логистику и половину городских сервисов." },
     { bg: "pr_screen", who: "NEXCORE", line: "Главный продукт компании — NEXAI: корпоративный ИИ, который ревьюит код, пишет тесты, назначает задачи и обещает убрать человеческий фактор." },
@@ -44,6 +57,18 @@ const CUTSCENES = {
     { bg: "danna_void", who: "ТЫ", line: "Что тебе от меня нужно?" },
     { bg: "danna_void", who: "DANNA", line: "Пока — чтобы ты сомневался. В NEXAI. Во мне. В людях, которые скажут, что всё под контролем. Сейчас тебя выдернут обратно. Не показывай, что понял слишком много." },
     { bg: "glitch_white", who: "СЕРИК", line: "Эй! Ты меня слышишь? Отойди от монитора. Срочно. У Айгерим после твоего обучения сломался NEXAI-клиент." }
+  ],
+  act2_repair_dive: [
+    { bg: "lab_serik", who: "СЕРИК", line: "Восьмой этаж сыпется. NEXAI «оптимизирует» их пайплайн каждые шесть минут — мониторы врут, письма уходят сами, сотрудники повторяются. Если не починить сейчас — глюки расползутся на весь корпус." },
+    { bg: "lab_serik", who: "СЕРИК", line: "Чинить снаружи бесполезно — NEXAI откатывает любой наш патч. Поэтому ты пойдёшь внутрь. Через свою станцию. Я открыл диагностический канал — он ведёт в подсистему восьмого этажа." },
+    { bg: "grid_dive", who: "ТЫ", line: "Опять падение сквозь сетку. BIOS, ядро, swap... но в этот раз я хотя бы знаю, что меня ждёт. Кажется." },
+    { bg: "pc_inside", who: "DANNA", line: "Я тебя встречу. Снаружи я только шёпот в логах, но здесь — могу говорить нормально. Здесь я могу помочь. Идём, я покажу, что чинить." }
+  ],
+  act2_repair_done: [
+    { bg: "pc_inside", who: "DANNA", line: "Подсистема восьмого этажа стабилизирована. Мониторы снова показывают правду. На пару часов NEXAI отстанет от них." },
+    { bg: "pc_inside", who: "DANNA", line: "Но это была заплатка, не лечение. Корень — в ядре. NEXAI спорит сам с собой о том, кем ему быть. И этот спор скоро дойдёт до тебя." },
+    { bg: "pc_inside", who: "ТЫ", line: "«Дойдёт до меня» — это как именно?" },
+    { bg: "pc_inside", who: "DANNA", line: "Буквально. Иди к ядру. Я постараюсь быть там раньше тебя." }
   ],
   act2_open: [
     { bg: "glitch_white", who: "ТЕРМИНАЛ", line: "nexai --status … соединение установлено … передача согласована … загрузка ⟨██████████⟩ 100%" },
@@ -95,11 +120,10 @@ k.scene("menu", () => {
     { id: "new", label: "НОВАЯ ИГРА", action: () => {
       Aud.uiSelect();
       resetState();
-      playCutscene(CUTSCENES.company_intro, () => {
-        playCutscene(CUTSCENES.opening, () => k.go("lobby"));
-      });
+      state.act = 0;
+      playCutscene(CUTSCENES.act0_metro, () => k.go("interview"));
     } },
-    { id: "continue", label: "ПРОДОЛЖИТЬ", disabled: !hasSave(), action: () => { Aud.uiSelect(); if (loadGame()) k.go(state.scene); } },
+    { id: "continue", label: "ПРОДОЛЖИТЬ", disabled: !hasAnySave(), action: () => { Aud.uiSelect(); k.go("saves", { mode: "load", returnTo: "menu" }); } },
     { id: "quit", label: "ВЫХОД", action: () => { Aud.uiBack(); k.go("quit"); } }
   ];
   let sel = 0;
@@ -149,6 +173,115 @@ k.scene("menu", () => {
   k.onKeyPress("down", () => step(1));
   k.onKeyPress("s", () => step(1));
   k.onButtonPress("interact", () => { if (!items[sel].disabled) items[sel].action(); });
+});
+
+// =====================================================================
+// SCENE: SAVE SLOTS — used for both "load" and "save" mode
+// =====================================================================
+k.scene("saves", ({ mode = "load", returnTo = "menu" } = {}) => {
+  const slots = getSaveSlots();
+  let sel = 0;
+
+  function fmtTime(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function actTitleLocal(a) {
+    return { 1: "First Commit", 2: "Merge Conflict", 3: "Pull Request", 4: "Deploy to Production" }[a] || "—";
+  }
+
+  function describeSlot(s, i) {
+    if (!s) return { title: `СЛОТ ${i + 1} · пусто`, sub: "(нажми E/Enter чтобы сохранить)" };
+    const a = (s.state && s.state.act) || 1;
+    const scene = (s.state && s.state.scene) || "—";
+    const task = (s.state && s.state.task) || "—";
+    return {
+      title: `СЛОТ ${i + 1} · АКТ ${a}: ${actTitleLocal(a)}`,
+      sub: `${scene}  ·  ${fmtTime(s.ts)}  ·  ${task}`
+    };
+  }
+
+  k.onDraw(() => {
+    k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 600, color: k.rgb(5, 6, 7) });
+    for (let y = 0; y < 600; y += 3) k.drawRect({ pos: k.vec2(0, y), width: 960, height: 1, color: k.rgb(232, 226, 212), opacity: 0.02 });
+    const titleText = mode === "save" ? "СОХРАНЕНИЯ" : "ЗАГРУЗИТЬ ИГРУ";
+    k.drawText({ text: titleText, size: 36, pos: k.vec2(480, 60), anchor: "center", color: k.rgb(232, 226, 212) });
+    k.drawText({ text: mode === "save" ? "// выбери слот для записи" : "// выбери сохранение", size: 12, pos: k.vec2(480, 96), anchor: "center", color: k.rgb(154, 147, 132) });
+
+    for (let i = 0; i < slots.length; i++) {
+      const y = 150 + i * 110;
+      const selected = i === sel;
+      const info = describeSlot(slots[i], i);
+
+      const bgColor = selected ? k.rgb(60, 14, 18) : k.rgb(15, 17, 22);
+      k.drawRect({ pos: k.vec2(80, y), width: 800, height: 90, color: bgColor, outline: { width: 1, color: k.rgb(selected ? 194 : 80, selected ? 32 : 30, selected ? 42 : 36) } });
+      // marker
+      k.drawRect({ pos: k.vec2(80, y), width: 4, height: 90, color: k.rgb(slots[i] ? 194 : 80, slots[i] ? 32 : 30, slots[i] ? 42 : 36) });
+
+      k.drawText({ text: (selected ? "▸ " : "  ") + info.title, size: 18, pos: k.vec2(100, y + 18), color: selected ? k.rgb(255, 255, 255) : k.rgb(232, 226, 212) });
+      k.drawText({ text: info.sub, size: 12, pos: k.vec2(100, y + 50), color: k.rgb(154, 147, 132), width: 780 });
+
+      // hint
+      if (selected) {
+        const hint = slots[i]
+          ? (mode === "save" ? "ENTER — перезаписать · DEL — удалить" : "ENTER — загрузить · DEL — удалить")
+          : (mode === "save" ? "ENTER — сохранить сюда" : "слот пуст");
+        k.drawText({ text: hint, size: 11, pos: k.vec2(880, y + 70), anchor: "topright", color: k.rgb(98, 197, 255) });
+      }
+    }
+    k.drawText({ text: "↑ ↓ выбор · ENTER подтвердить · DEL удалить · ESC назад", size: 11, pos: k.vec2(480, 562), anchor: "center", color: k.rgb(90, 84, 72) });
+  });
+
+  function step(dir) {
+    sel = (sel + dir + slots.length) % slots.length;
+    Aud.uiBlip();
+  }
+  k.onKeyPress("up", () => step(-1));
+  k.onKeyPress("w", () => step(-1));
+  k.onKeyPress("down", () => step(1));
+  k.onKeyPress("s", () => step(1));
+
+  k.onButtonPress("interact", () => {
+    if (mode === "load") {
+      if (!slots[sel]) { Aud.uiBack(); return; }
+      Aud.uiSelect();
+      if (loadFromSlot(sel)) k.go(state.scene || "lobby");
+    } else {
+      // save mode — confirm overwrite if filled
+      if (slots[sel]) {
+        Aud.uiSelect();
+        saveToSlot(sel);
+        // refresh slot data in this scene
+        slots[sel] = getSaveSlots()[sel];
+        Aud.save();
+        // brief visual: bump to next then back? Just re-render. Going back to game:
+        k.go(returnTo === "menu" ? "menu" : state.scene);
+      } else {
+        Aud.uiSelect();
+        saveToSlot(sel);
+        slots[sel] = getSaveSlots()[sel];
+        Aud.save();
+        k.go(returnTo === "menu" ? "menu" : state.scene);
+      }
+    }
+  });
+
+  k.onKeyPress("delete", () => {
+    if (!slots[sel]) return;
+    Aud.uiBack();
+    deleteSlot(sel);
+    slots[sel] = null;
+  });
+  k.onKeyPress("backspace", () => {
+    if (!slots[sel]) return;
+    Aud.uiBack();
+    deleteSlot(sel);
+    slots[sel] = null;
+  });
+
+  k.onKeyPress("escape", () => { Aud.uiBack(); k.go(returnTo || "menu"); });
 });
 
 // =====================================================================
@@ -309,6 +442,81 @@ function drawAIShape(cx, cy, hex, phase) {
 function drawCutsceneBG(name) {
   const t = k.time();
   k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 600, color: k.rgb(5, 6, 7) });
+
+  if (name === "metro") {
+    // metro car interior, moving
+    k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 600, color: k.rgb(28, 30, 38) });
+    // ceiling + floor bands
+    k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 70, color: k.rgb(40, 42, 52) });
+    k.drawRect({ pos: k.vec2(0, 470), width: 960, height: 130, color: k.rgb(18, 19, 24) });
+    // windows showing tunnel rush
+    for (let i = 0; i < 4; i++) {
+      const x = 80 + i * 230;
+      k.drawRect({ pos: k.vec2(x, 110), width: 170, height: 150, color: k.rgb(10, 11, 16) });
+      // streaking tunnel lights
+      for (let j = 0; j < 6; j++) {
+        const sx = ((j * 60 + t * 600) % 200) - 20;
+        k.drawRect({ pos: k.vec2(x + sx, 150 + (j % 3) * 35), width: 30, height: 4, color: k.rgb(255, 200, 90), opacity: 0.5 });
+      }
+    }
+    // poles
+    for (let i = 0; i < 3; i++) k.drawRect({ pos: k.vec2(180 + i * 280, 70), width: 5, height: 400, color: k.rgb(90, 92, 100) });
+    // seated passenger silhouettes
+    for (let i = 0; i < 5; i++) {
+      const x = 110 + i * 170;
+      k.drawRect({ pos: k.vec2(x, 320), width: 70, height: 120, color: k.rgb(22, 24, 30) });
+      k.drawRect({ pos: k.vec2(x + 18, 280), width: 34, height: 40, color: k.rgb(30, 32, 40) });
+    }
+    // subtle vertical shake
+    const shk = Math.sin(t * 18) * 2;
+    k.drawRect({ pos: k.vec2(0, 466 + shk), width: 960, height: 3, color: k.rgb(60, 62, 70) });
+  }
+
+  if (name === "phone_jobs") {
+    // dark, with a phone screen front and centre
+    k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 600, color: k.rgb(14, 15, 20) });
+    // phone body
+    k.drawRect({ pos: k.vec2(330, 70), width: 300, height: 470, color: k.rgb(8, 9, 12) });
+    k.drawRect({ pos: k.vec2(342, 96), width: 276, height: 410, color: k.rgb(236, 238, 242) });
+    // status bar
+    k.drawRect({ pos: k.vec2(342, 96), width: 276, height: 22, color: k.rgb(210, 212, 218) });
+    k.drawText({ text: "9:41   поиск работы", size: 11, pos: k.vec2(352, 101), color: k.rgb(60, 62, 70) });
+    // job cards scrolling
+    for (let i = 0; i < 5; i++) {
+      const y = 130 + i * 74 - ((t * 30) % 74);
+      if (y < 118 || y > 470) continue;
+      const hot = i === 2;
+      k.drawRect({ pos: k.vec2(354, y), width: 252, height: 62, color: hot ? k.rgb(255, 235, 200) : k.rgb(250, 250, 252) });
+      k.drawRect({ pos: k.vec2(354, y), width: 4, height: 62, color: hot ? k.rgb(194, 32, 42) : k.rgb(180, 182, 190) });
+      k.drawText({ text: hot ? "NexCore — IT" : ["Грузчик", "Промоутер", "Курьер", "Оператор"][i % 4], size: 13, pos: k.vec2(366, y + 10), color: k.rgb(30, 32, 40) });
+      k.drawText({ text: hot ? "опыт не важен · откликнуться" : "без опыта", size: 10, pos: k.vec2(366, y + 34), color: k.rgb(120, 122, 130) });
+    }
+    // screen glow on player's face area (bottom)
+    k.drawRect({ pos: k.vec2(0, 540), width: 960, height: 60, color: k.rgb(60, 70, 90), opacity: 0.4 });
+  }
+
+  if (name === "office_door") {
+    // glass tower entrance, day
+    k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 600, color: k.rgb(150, 170, 200) });
+    k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 260, color: k.rgb(120, 150, 195) });
+    // tower
+    k.drawRect({ pos: k.vec2(120, 40), width: 720, height: 420, color: k.rgb(40, 55, 80) });
+    // window grid
+    for (let r = 0; r < 11; r++) for (let c = 0; c < 12; c++) {
+      const lit = (r * 7 + c * 3) % 5 < 2;
+      k.drawRect({ pos: k.vec2(140 + c * 58, 58 + r * 36), width: 44, height: 26, color: lit ? k.rgb(180, 210, 240) : k.rgb(55, 72, 100) });
+    }
+    // ground
+    k.drawRect({ pos: k.vec2(0, 460), width: 960, height: 140, color: k.rgb(70, 72, 78) });
+    // entrance doors
+    k.drawRect({ pos: k.vec2(410, 360), width: 140, height: 100, color: k.rgb(20, 28, 40) });
+    k.drawRect({ pos: k.vec2(478, 360), width: 4, height: 100, color: k.rgb(120, 140, 170) });
+    // logo
+    k.drawText({ text: "NEXCORE", size: 26, pos: k.vec2(480, 26), anchor: "center", color: k.rgb(255, 255, 255) });
+    // glow pulse from doorway
+    const pulse = 0.3 + Math.sin(t * 2) * 0.2;
+    k.drawRect({ pos: k.vec2(410, 360), width: 140, height: 100, color: k.rgb(98, 197, 255), opacity: pulse * 0.3 });
+  }
 
   if (name === "glitch_white") {
     // strobing white-blue glitch flashes
