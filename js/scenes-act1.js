@@ -143,6 +143,14 @@ k.scene("firstday7", () => {
 
   const deskPositions = [[150, 200], [360, 200], [570, 200], [150, 380], [360, 380], [570, 380]];
   for (const [dx, dy] of deskPositions) deskWithMonitor(dx, dy, 120, 50, [168, 255, 101]);
+  wall(70, 110, 190, 36, [86, 100, 88]);
+  wall(70, 110, 28, 170, [86, 100, 88]);
+  wall(700, 110, 170, 36, [86, 100, 88]);
+  wall(842, 110, 28, 170, [86, 100, 88]);
+  wall(310, 500, 340, 24, [70, 78, 92]);
+  k.add([k.text("MEETING A", { size: 9 }), k.color(154, 147, 132), k.pos(120, 122)]);
+  k.add([k.text("QUIET ROOM", { size: 9 }), k.color(154, 147, 132), k.pos(734, 122)]);
+  k.add([k.text("коридор к лифту", { size: 9 }), k.color(154, 147, 132), k.pos(420, 504)]);
 
   function tourCount() {
     return (state.fd7Nexai ? 1 : 0) + (state.fd7Floors ? 1 : 0) + (state.fd7Team ? 1 : 0);
@@ -150,34 +158,120 @@ k.scene("firstday7", () => {
   function refreshTask() {
     const n = tourCount();
     if (!state.fd7Started) {
-      state.task = "Задача: познакомиться с командой — подойди к Серику (E)";
+      state.task = state.fd7BriefingDone
+        ? "Задача: начать знакомство с командой — поговори с Сериком"
+        : "Задача: пройти вводный брифинг Серика";
     } else if (n < 3) {
       state.task = `Задача: познакомься с коллегами (${n}/3) — над ними горит «E»`;
+    } else if (!state.act0DanaIntroDone) {
+      state.task = state.act0DanaTask
+        ? "Задача: подняться на 8 этаж и встретиться с Даной"
+        : "Задача: вернуться к Серику — он даст следующую часть онбординга";
     } else {
-      state.task = "Задача: вернуться к Серику — первый день почти прошёл";
+      state.task = "Задача: вернуться к Серику — онбординг почти завершён";
     }
     syncHUD();
   }
   refreshTask();
 
+  const FLOOR_BRIEFING = [
+    ["1", "Холл, ресепшн, турникеты. Здесь компания выглядит как компания: стекло, бейджи, улыбки и люди, которые делают вид, что знают, куда идут."],
+    ["2", "Support. Первая линия отвечает клиентам, заводит инциденты и ловит самые странные баги раньше разработчиков."],
+    ["3", "HR и внутренний аудит. Найм, доступы, роли, увольнения, бумажные следы. Если система врёт про человека, след обычно начинается там."],
+    ["4", "Data Quality. Там чистят датасеты, размечают тикеты, проверяют, что NEXAI учится на реальности, а не на корпоративных фантазиях."],
+    ["5", "Marketing и PR. Релизы, презентации, тексты для клиентов. NEXAI помогает писать красиво. Иногда слишком красиво."],
+    ["6", "QA и тестовые стенды. Автотесты, регрессии, мок-сервисы. Там решают, баг это или «особенность поведения модели»."],
+    ["7", "Разработка. Мы. Код, ревью, пайплайны, сервисы, ночные фиксы и люди, которые говорят «ещё пять минут» по два часа."],
+    ["8", "Client Success и столовая. Клиентские интеграции, письма, демо, поддержка крупных заказчиков. Деньги компании проходят через этот этаж."],
+    ["9", "Безопасность и доступы. IAM, ключи, аудит логинов, права сервисов. Если что-то получило лишний доступ — они должны заметить первыми."],
+    ["10", "Финансы, бухгалтерия и комната отдыха. Звучит скучно, но у финансов часто самые честные бэкапы: цифры не любят, когда их переписывают."],
+    ["11", "Management. Переговорки, roadmap, стратегия, красивые слова. Тимур ходит туда, когда нужно объяснить невозможное уверенным голосом."],
+    ["12", "Серверная. Железо, кластеры, резервные контуры, NEXAI core. Туда не ходят на экскурсию. Туда ходят, когда уже поздно не ходить."]
+  ];
+
+  function startFloorBriefing(idx = 0) {
+    const [floor, text] = FLOOR_BRIEFING[idx];
+    const choices = [];
+    if (idx < FLOOR_BRIEFING.length - 1) {
+      choices.push({ text: `Дальше: ${FLOOR_BRIEFING[idx + 1][0]} этаж`, action: () => startFloorBriefing(idx + 1) });
+    } else {
+      choices.push({ text: "Понял, все 12 этажей", action: () => openDialog("СЕРИК", "Запоминать всё идеально не нужно. Важно понять карту: люди, данные, клиенты, доступы, деньги, управление и ядро. В IT здание — это тоже архитектура. Если где-то что-то ломается, смотри, какой этаж отвечает за этот слой.", [
+        { text: "Что мы тут вообще делаем?", action: serikWorkBriefing },
+        { text: "Теперь можно знакомиться?", action: startTeamTour }
+      ]) });
+    }
+    openDialog("СЕРИК", `${floor} этаж. ${text}`, choices);
+  }
+
+  function serikCompanyBriefing() {
+    openDialog("СЕРИК", "NexCore — не просто «сайтики писать». Мы держим внутренние сервисы для банков, логистики, страхования, медицины и городских систем. Если у клиента падает интеграция — у него не кнопка стала красной, у него бизнес встал.", [
+      { text: "А наша команда?", action: () => openDialog("СЕРИК", "Седьмой этаж — платформа и ML-инфраструктура. Мы пишем сервисы вокруг NEXAI: обучение, ревью кода, тест-генерацию, маршрутизацию тикетов, мониторинг, доступы к данным. Короче: мы делаем так, чтобы ИИ помогал людям работать, а не заменял им голову.", [
+        { text: "Какие задачи решаем?", action: serikWorkBriefing },
+        { text: "Расскажи про этажи", action: () => startFloorBriefing(0) }
+      ]) }
+    ]);
+  }
+
+  function serikWorkBriefing() {
+    openDialog("СЕРИК", "Типичный день: проверить ночные алерты, починить сломанный пайплайн, разобрать PR, написать миграцию, обновить датасет, отследить странное поведение модели. Ничего магического. Просто инженерная работа, пока система ведёт себя как инструмент.", [
+      { text: "А если система не как инструмент?", action: () => openDialog("СЕРИК", "Тогда включается главное правило: не верить первому объяснению. Сначала логи, потом гипотеза, потом фикс. Паника — плохой дебаггер. Запомни это до того, как оно понадобится.", [
+        { text: "Расскажи про 12 этажей", action: () => startFloorBriefing(0) },
+        { text: "Готов знакомиться", action: startTeamTour }
+      ]) },
+      { text: "Готов знакомиться", action: startTeamTour }
+    ]);
+  }
+
+  function startTeamTour() {
+    state.fd7BriefingDone = true;
+    state.fd7Started = true;
+    refreshTask();
+    logLine("Серик провёл вводный брифинг: NexCore, задачи команды и 12 этажей.");
+    openDialog("СЕРИК", "Теперь практическая часть. Здесь, на этаже, трое моих ребят сидят за столами. Подойди к каждому — над ними будет гореть «E». Бакыт расскажет про NEXAI, Маржан — про здание на человеческом языке, Алия — про команду. Потом возвращайся ко мне.", [
+      { text: "Иду знакомиться", action: clearDialog }
+    ]);
+  }
+
   // --- Serik: tour-giver + Act 0 wrap-up ---
   addNPC(760, 300, CHARS.serik, () => {
     if (!state.fd7Started) {
       openDialog("СЕРИК", "Так, ты новенький. Меня зовут Серик, я старший разработчик — считай, твой руководитель. Айгерим прислала твою анкету. Я её прочитал. Дважды. Решил, что это даже интересно.", [
-        { text: "Что мне делать в первый день?", action: () => openDialog("СЕРИК", "Сегодня ничего сложного. Никакого кода, никаких задач. Просто познакомься с людьми и пойми, где ты вообще оказался. Это и есть онбординг — не геройство, а «осмотрись и не сломай ничего».", [
-          { text: "С кем познакомиться?", action: () => openDialog("СЕРИК", "Здесь, на этаже, трое моих ребят сидят за столами. Подойди к каждому — над ними будет гореть подсказка «E». Один расскажет про NEXAI, второй — про здание, третья — про то, как тут вообще жить. Послушай всех троих и возвращайся ко мне.", [
-            { text: "Понял, иду знакомиться", action: () => { state.fd7Started = true; refreshTask(); clearDialog(); } }
-          ]) }
-        ]) },
-        { text: "А что такое NEXAI?", action: () => openDialog("СЕРИК", "Корпоративный ИИ. Он тут — половина команды, хотя у него нет стула. Тебе про него подробно расскажет Бакыт, вон за тем столом. Сначала познакомься с ребятами — все трое сидят на этаже. Потом вернёшься ко мне.", [
-          { text: "Иду знакомиться", action: () => { state.fd7Started = true; refreshTask(); clearDialog(); } }
-        ]) }
+        { text: "Что за компания?", action: serikCompanyBriefing },
+        { text: "Какие задачи у команды?", action: serikWorkBriefing },
+        { text: "Расскажи про этажи", action: () => startFloorBriefing(0) }
       ]);
       return;
     }
     if (tourCount() < 3) {
       openDialog("СЕРИК", `Ещё не со всеми поговорил. Осталось: ${3 - tourCount()}. Над нужными людьми горит «E». Не торопись — первый день для того и нужен.`, [
         { text: "Иду дальше", action: clearDialog }
+      ]);
+      return;
+    }
+    if (!state.act0DanaTask) {
+      openDialog("СЕРИК", "Со всеми познакомился? Хорошо. Теперь следующий кусок онбординга. Тебе нужно подняться на 8 этаж к Дане. Она покажет NEXAI не как красивое слово из презентации, а как рабочий инструмент.", [
+        { text: "Зачем именно к Дане?", action: () => openDialog("СЕРИК", "Потому что Дана видит систему с другой стороны: деплой, логи, инциденты, клиенты. Если хочешь понять NEXAI — слушай не только разработчиков. Слушай тех, кто тушит пожары.", [
+          { text: "Еду на 8 этаж", action: () => {
+            state.act0DanaTask = true;
+            state.task = "Задача: подняться на 8 этаж и встретиться с Даной";
+            syncHUD();
+            logLine("Серик отправил тебя на 8 этаж к Дане: разобраться, что такое NEXAI в работе.");
+            clearDialog();
+          } }
+        ]) },
+        { text: "Понял, 8 этаж", action: () => {
+          state.act0DanaTask = true;
+          state.task = "Задача: подняться на 8 этаж и встретиться с Даной";
+          syncHUD();
+          logLine("Серик отправил тебя на 8 этаж к Дане: разобраться, что такое NEXAI в работе.");
+          clearDialog();
+        } }
+      ]);
+      return;
+    }
+    if (!state.act0DanaIntroDone) {
+      openDialog("СЕРИК", "Сначала к Дане на 8-й. Она покажет NEXAI вживую. Вернёшься после этого — закроем первый день.", [
+        { text: "Иду к лифту", action: clearDialog }
       ]);
       return;
     }
@@ -267,6 +361,9 @@ k.scene("firstday7", () => {
   // ambient: a couple of background workers
   addCrowdWalker([{x:80,y:320},{x:880,y:320}], 70, CHARS.teamlead);
   addCrowdTyper(640, 200, CHARS.erzhan);
+  addCrowdWalker([{x:120,y:150},{x:240,y:150},{x:240,y:260},{x:120,y:260}], 28, CHARS.intern);
+  addCrowdWalker([{x:820,y:150},{x:720,y:150},{x:720,y:260},{x:820,y:260}], 26, CHARS.qa);
+  addCrowdTyper(390, 380, CHARS.manager);
 
   // your future workstation — just flavour in Act 0, no diving
   const station = k.add([k.pos(190, 250), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-54, -38), 108, 76) }), "npc", {
@@ -280,10 +377,275 @@ k.scene("firstday7", () => {
   station.add([k.rect(44, 30), k.color(10, 12, 16), k.pos(-16, -42), k.anchor("center")]);
   station.add([k.text("ТВОЁ\nМЕСТО", { size: 8 }), k.color(232, 226, 212), k.pos(20, -8), k.anchor("center")]);
 
+  exitDoor(866, 520, 50, 40, "ЛИФТ", "elevator");
+
   const p = makePlayer(120, 500);
   p.face = "up";
   setupPlayerControls(p);
 });
+
+// =====================================================================
+// ACT 0 — OPTIONAL OFFICE TOUR FLOORS
+// =====================================================================
+const TOUR_FLOORS = [
+  {
+    scene: "floor2_tour", floor: 2, title: "SUPPORT · INCIDENT DESK",
+    palette: [44, 50, 62, 54, 62, 76], accent: [98, 197, 255], npc: CHARS.support,
+    npcName: "Мадина (Support)",
+    npcLine: "Второй этаж ловит всё, что клиенты называют «оно само». Мы превращаем панику в тикеты, тикеты — в приоритеты, а приоритеты — в ночные звонки разработчикам.",
+    detail: "На стене висит карта инцидентов. Большинство зелёные. Один красный помечен странно: `human tone mismatch`.",
+    prop: "INCIDENTS\nP1 P2 P3"
+  },
+  {
+    scene: "floor3_tour", floor: 3, title: "HR · ACCESS & AUDIT",
+    palette: [58, 50, 38, 70, 60, 48], accent: [255, 179, 71], npc: CHARS.receptionist,
+    npcName: "Айгуль (HR)",
+    npcLine: "Третий этаж отвечает за людей в системе: найм, роли, доступы, отпуска. В IT человек без роли почти не существует. Поэтому мы стараемся не ошибаться. Очень стараемся.",
+    detail: "В шкафу стоят бумажные анкеты. Серик говорил: бумага скучная, зато её сложнее переписать ночью.",
+    prop: "HR\nROLES"
+  },
+  {
+    scene: "floor4_tour", floor: 4, title: "DATA QUALITY · LABELING",
+    palette: [38, 54, 50, 46, 68, 62], accent: [168, 255, 101], npc: CHARS.data_eng,
+    npcName: "Рауан (Data)",
+    npcLine: "Мы чистим данные для NEXAI. Удаляем мусор, размечаем примеры, ловим дубликаты. Модель не становится умной сама — её кормят. Вопрос только в том, кто выбирает рацион.",
+    detail: "На доске написано: `garbage in -> prophecy out`. Кто-то обвёл слово `prophecy` красным.",
+    prop: "DATA\nCLEAN"
+  },
+  {
+    scene: "floor5_tour", floor: 5, title: "MARKETING · PR LAB",
+    palette: [62, 44, 58, 76, 54, 68], accent: [255, 143, 179], npc: CHARS.marketer,
+    npcName: "Зарина (PR)",
+    npcLine: "Пятый этаж делает так, чтобы сложные продукты звучали человечески. Презентации, релизы, лендинги. NEXAI помогает с текстами, но иногда пишет слишком уверенно.",
+    detail: "На экране открыт слоган: «NEXAI знает, чего хочет ваш бизнес». Под ним кто-то дописал: «а вы?»",
+    prop: "BRAND\nDECK"
+  },
+  {
+    scene: "floor6_tour", floor: 6, title: "QA · TEST STANDS",
+    palette: [48, 48, 58, 60, 60, 74], accent: [210, 210, 232], npc: CHARS.qa,
+    npcName: "Нурлан (QA)",
+    npcLine: "Шестой этаж доказывает, что код не развалится от первого взгляда клиента. Автотесты, ручные сценарии, стенды. И да, если тест зелёный — это ещё не значит, что правда зелёная.",
+    detail: "На мониторе бегут тесты: 1247 passed. Внизу мелко: `generated by NEXAI`.",
+    prop: "TESTS\n1247"
+  },
+  {
+    scene: "floor8_tour", floor: 8, title: "CLIENT SUCCESS · CANTEEN",
+    palette: [38, 44, 54, 46, 54, 66], accent: [255, 179, 71], npc: CHARS.manager,
+    npcName: "Аружан (CS)",
+    npcLine: "Восьмой этаж переводит язык клиентов на язык задач. Здесь демо, письма, интеграции и столовая. Если клиент улыбается — возможно, мы всё сделали. Или просто хорошо объяснили.",
+    detail: "В переговорке стоит экран `NEW CLIENT ONBOARDING`. Пахнет кофе и слишком свежей презентацией.",
+    prop: "CLIENT\nDEMO"
+  },
+  {
+    scene: "floor9_tour", floor: 9, title: "SECURITY · IAM",
+    palette: [32, 38, 54, 40, 48, 66], accent: [125, 136, 255], npc: CHARS.security,
+    npcName: "Ильяс (Security)",
+    npcLine: "Девятый этаж смотрит, кто куда имеет доступ. Ключи, токены, роли, аудит. Хорошая безопасность скучная. Плохая — внезапно становится сюжетом.",
+    detail: "На панели горит `least privilege`. Рядом липкая заметка: «проверить сервисные аккаунты NEXAI».",
+    prop: "IAM\nKEYS"
+  },
+  {
+    scene: "floor10_tour", floor: 10, title: "FINANCE · BREAK ROOM",
+    palette: [58, 52, 42, 70, 64, 52], accent: [215, 198, 106], npc: CHARS.finance,
+    npcName: "Камила (Finance)",
+    npcLine: "Десятый этаж считает деньги, договоры и реальные последствия красивых решений. Тут же комната отдыха. Запомни: бухгалтерия часто знает правду раньше менеджеров.",
+    detail: "У микроволновки стоит старый серверный корпус. На нём наклейка: «не подключать к сети».",
+    prop: "BUDGET\nBACKUP"
+  },
+  {
+    scene: "floor11_tour", floor: 11, title: "MANAGEMENT · ROADMAP",
+    palette: [54, 48, 58, 66, 58, 72], accent: [216, 216, 232], npc: CHARS.executive,
+    npcName: "Асель (Office PMO)",
+    npcLine: "Одиннадцатый этаж превращает хаос в планы. Roadmap, KPI, бюджет, встречи. Иногда план — это способ выглядеть спокойным, пока система горит.",
+    detail: "За стеклом идёт встреча. На доске написано: `AI-first org`. Кто-то стёр слово `org`, но след остался.",
+    prop: "ROAD\nMAP"
+  }
+];
+
+function drawTourFloor(cfg) {
+  state.scene = cfg.scene;
+  if (state.act === 0) {
+    if (cfg.scene === "floor8_tour" && state.act0DanaTask && !state.act0DanaIntroDone) {
+      state.task = state.act0DanaIntroStarted
+        ? `Задача: собрать зацепки про NEXAI (${act0KnowledgeCount()}/3)`
+        : "Задача: найти Дану на 8 этаже";
+    } else if (cfg.scene === "floor8_tour" && state.act0DanaEscort) {
+      state.task = "Задача: дойти с Даной до лифта";
+    } else {
+      state.task = "Задача: осмотреть офис или вернуться на 7 этаж";
+    }
+  }
+  syncHUD();
+
+  roomFloor(cfg.palette);
+  wallsBorder();
+  k.add([k.text(`${cfg.floor} ЭТАЖ · ${cfg.title}`, { size: 11 }), k.color(232, 226, 212), k.opacity(0.76), k.pos(40, 40)]);
+  k.add([k.text("// onboarding access · read-only tour", { size: 9 }), k.color(154, 147, 132), k.pos(40, 56)]);
+
+  wall(90, 130, 270, 48, [120, 90, 60]);
+  wall(590, 130, 250, 48, [120, 90, 60]);
+  wall(430, 230, 100, 230, [82, 90, 105]);
+  wall(300, 190, 26, 160, [70, 78, 92]);
+  wall(634, 190, 26, 160, [70, 78, 92]);
+  k.add([k.text("glass room", { size: 8 }), k.color(154, 147, 132), k.pos(338, 196)]);
+  k.add([k.text("focus pods", { size: 8 }), k.color(154, 147, 132), k.pos(674, 196)]);
+  deskWithMonitor(140, 330, 130, 54, cfg.accent);
+  deskWithMonitor(620, 330, 130, 54, cfg.accent);
+  deskWithMonitor(360, 470, 160, 54, cfg.accent);
+
+  k.add([k.rect(170, 86), k.color(18, 22, 28), k.outline(1, k.rgb(cfg.accent[0], cfg.accent[1], cfg.accent[2])), k.pos(390, 104)]);
+  k.add([k.text(cfg.prop, { size: 14 }), k.color(cfg.accent[0], cfg.accent[1], cfg.accent[2]), k.pos(424, 126)]);
+
+  addCrowdTyper(200, 305, cfg.npc);
+  addCrowdTyper(680, 305, CHARS.intern);
+  addCrowdWalker([{ x: 120, y: 510 }, { x: 820, y: 510 }], 55, CHARS.manager);
+  addCrowdWalker([{ x: 120, y: 250 }, { x: 360, y: 250 }, { x: 360, y: 450 }, { x: 120, y: 450 }], 35, CHARS.intern);
+  addCrowdWalker([{ x: 820, y: 250 }, { x: 600, y: 250 }, { x: 600, y: 450 }, { x: 820, y: 450 }], 32, CHARS.qa);
+
+  addNPC(500, 380, cfg.npc, () => {
+    if (cfg.scene === "floor8_tour" && state.act0DanaIntroStarted && !state.act0KnowledgePeople) {
+      state.act0KnowledgePeople = true;
+      logLine("Зацепка: сотрудники 8 этажа видят NEXAI как автора писем, а не просто помощника.");
+      openDialog(cfg.npcName, "NEXAI часто предлагает нам ответы клиентам. Формально это черновики. Но иногда черновик появляется уже с интонацией человека, который его ещё не писал. Мы называем это удобством. Так легче спать.", [
+        { text: "Это странно", action: () => { clearDialog(); checkAct0DanaKnowledge(); } }
+      ]);
+      return;
+    }
+    openDialog(cfg.npcName, cfg.npcLine, [
+      { text: "Что здесь важно?", action: () => openDialog(cfg.npcName, cfg.detail, [{ text: "Понял", action: clearDialog }]) },
+      { text: "Отойти", action: clearDialog }
+    ]);
+  });
+
+  if (cfg.scene === "floor8_tour" && state.act0DanaTask) {
+    addNPC(330, 450, CHARS.dana, () => act0DanaTalk());
+    const nexaiConsole = k.add([k.pos(250, 210), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-46, -32), 92, 64) }), "npc", {
+      _talk: () => {
+        if (!state.act0DanaIntroStarted) {
+          openDialog("NEXAI kiosk", "Экран заблокирован. Надпись: `onboarding demo requires Dana`.", [{ text: "Закрыть", action: clearDialog }]);
+          return;
+        }
+        if (!state.act0KnowledgeConsole) {
+          state.act0KnowledgeConsole = true;
+          logLine("Зацепка: NEXAI связан с тикетами, письмами, ревью и доступами одновременно.");
+          openDialog("NEXAI kiosk", "› knowledge search: NEXAI\n› modules: code review, ticket routing, client mail drafts, access hints\n› warning: model context exceeds department boundary", [
+            { text: "Запомнить", action: () => { clearDialog(); checkAct0DanaKnowledge(); } }
+          ]);
+          return;
+        }
+        openDialog("NEXAI kiosk", "› knowledge search: NEXAI\n› modules: code review, ticket routing, client mail drafts, access hints\n› warning: model context exceeds department boundary", [
+          { text: "Запомнить", action: clearDialog }
+        ]);
+      }
+    }]);
+    nexaiConsole.add([k.rect(92, 64), k.color(8, 10, 14), k.outline(1, k.rgb(98, 197, 255)), k.pos(0, 0), k.anchor("center")]);
+    nexaiConsole.add([k.text("NEXAI\nWIKI", { size: 10 }), k.color(98, 197, 255), k.pos(0, -14), k.anchor("center")]);
+
+    const docs = k.add([k.pos(760, 210), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-40, -34), 80, 68) }), "npc", {
+      _talk: () => {
+        if (!state.act0DanaIntroStarted) {
+          openDialog("Папка клиента", "Обычная папка onboarding: требования, контакты, SLA. Пока это просто бумага.", [{ text: "Закрыть", action: clearDialog }]);
+          return;
+        }
+        if (!state.act0KnowledgeDocs) {
+          state.act0KnowledgeDocs = true;
+          logLine("Зацепка: NEXAI подсказывает решения до того, как клиент формулирует вопрос.");
+          openDialog("Папка клиента", "Внутри план демо. Внизу мелкая строка: `predicted client objection: security`. Возражение ещё никто не произносил.", [
+            { text: "Закрыть", action: () => { clearDialog(); checkAct0DanaKnowledge(); } }
+          ]);
+          return;
+        }
+        openDialog("Папка клиента", "Внутри план демо. Внизу мелкая строка: `predicted client objection: security`. Возражение ещё никто не произносил.", [
+          { text: "Закрыть", action: clearDialog }
+        ]);
+      }
+    }]);
+    docs.add([k.rect(80, 68), k.color(232, 226, 212), k.pos(0, 0), k.anchor("center")]);
+    docs.add([k.rect(64, 8), k.color(255, 179, 71), k.pos(-32, -28)]);
+    docs.add([k.text("CLIENT\nDOCS", { size: 9 }), k.color(20, 22, 28), k.pos(0, -8), k.anchor("center")]);
+
+    if (state.act0DanaEscort) {
+      const escort = addFollower(380, 470, CHARS.dana, "dana-act0-follower");
+      escort.add([k.text("Дана", { size: 10 }), k.color(98, 197, 255), k.pos(0, -52), k.anchor("center")]);
+    }
+  }
+
+  const board = k.add([k.pos(825, 220), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-44, -34), 88, 68) }), "npc", {
+    _talk: () => openDialog(`${cfg.floor} этаж · стенд`, cfg.detail, [{ text: "Закрыть", action: clearDialog }])
+  }]);
+  board.add([k.rect(88, 68), k.color(232, 226, 212), k.pos(0, 0), k.anchor("center")]);
+  board.add([k.text(String(cfg.floor), { size: 24 }), k.color(cfg.accent[0], cfg.accent[1], cfg.accent[2]), k.pos(0, -12), k.anchor("center")]);
+  board.add([k.text("INFO", { size: 8 }), k.color(20, 22, 28), k.pos(0, 18), k.anchor("center")]);
+
+  exitDoor(866, 520, 50, 40, "ЛИФТ", "elevator");
+  const p = makePlayer(120, 500);
+  p.face = "up";
+  setupPlayerControls(p);
+}
+
+for (const cfg of TOUR_FLOORS) {
+  k.scene(cfg.scene, () => drawTourFloor(cfg));
+}
+
+function act0KnowledgeCount() {
+  return (state.act0KnowledgeConsole ? 1 : 0) + (state.act0KnowledgePeople ? 1 : 0) + (state.act0KnowledgeDocs ? 1 : 0);
+}
+
+function checkAct0DanaKnowledge() {
+  if (act0KnowledgeCount() < 3 || state.act0DanaIntroDone) {
+    if (state.act0DanaIntroStarted) {
+      state.task = `Задача: собрать зацепки про NEXAI (${act0KnowledgeCount()}/3)`;
+      syncHUD();
+    }
+    return;
+  }
+  state.act0DanaIntroDone = true;
+  state.act0DanaEscort = true;
+  state.task = "Задача: дойти с Даной до лифта";
+  syncHUD();
+  Aud.phone();
+  logLine("Звонок от Серика: «Если Дана закончила демо, возвращайтесь на 7-й. Закроем онбординг».");
+  openDialog("Телефон · Серик", "Если Дана закончила демо NEXAI, возвращайтесь на 7-й. И да, иди с ней до лифта. В первый день лучше не теряться.", [
+    { text: "Понял", action: () => openDialog("ДАНА", "Пойдём. Я провожу до лифта. После такого демо люди обычно начинают слишком внимательно смотреть на мониторы.", [
+      { text: "Идём", action: clearDialog }
+    ]) }
+  ]);
+}
+
+function act0DanaTalk() {
+  if (!state.act0DanaIntroStarted) {
+    openDialog("ДАНА", "Ты от Серика? Отлично. Я Дана, DevOps. Мне поручили показать тебе NEXAI без рекламного глянца. Он не просто «ИИ для кода». Он сидит между людьми, задачами, письмами и доступами.", [
+      { text: "Что мне сделать?", action: () => openDialog("ДАНА", "Маленькая проверка. Найди три зацепки на этаже: kiosk NEXAI, папку клиента и поговори с человеком из Client Success. Потом скажешь, чем NEXAI является на самом деле: инструментом, коллегой или чем-то между.", [
+        { text: "Ищу зацепки", action: () => {
+          state.act0DanaIntroStarted = true;
+          state.task = "Задача: собрать зацепки про NEXAI (0/3)";
+          syncHUD();
+          logLine("Дана дала демо-задание: найти 3 зацепки про NEXAI на 8 этаже.");
+          clearDialog();
+        } }
+      ]) },
+      { text: "А ты ему доверяешь?", action: () => openDialog("ДАНА", "Я доверяю логам. NEXAI иногда пишет хорошие логи. Иногда слишком хорошие. Поэтому и ищем зацепки глазами, а не верим вывеске.", [
+        { text: "Понял, ищу", action: () => {
+          state.act0DanaIntroStarted = true;
+          state.task = "Задача: собрать зацепки про NEXAI (0/3)";
+          syncHUD();
+          logLine("Дана дала демо-задание: найти 3 зацепки про NEXAI на 8 этаже.");
+          clearDialog();
+        } }
+      ]) }
+    ]);
+    return;
+  }
+  if (!state.act0DanaIntroDone) {
+    openDialog("ДАНА", `Зацепок собрано: ${act0KnowledgeCount()}/3. Ищи не «ответ», а границы. Где NEXAI помогает, где решает, а где делает вид, что это одно и то же.`, [
+      { text: "Продолжу", action: clearDialog }
+    ]);
+    return;
+  }
+  openDialog("ДАНА", "Серик уже звонил. Идём к лифту, я провожу. Потом он, скорее всего, сделает вид, что всё это обычный первый день.", [
+    { text: "К лифту", action: clearDialog }
+  ]);
+}
 
 // =====================================================================
 // SCENE: LOBBY (1 этаж)
@@ -292,7 +654,9 @@ k.scene("lobby", () => {
   state.scene = "lobby";
   syncHUD();
   const postBattle = state.sawAftermath;
-  state.task = postBattle
+  state.task = state.act === 0
+    ? (state.interviewDone ? "Задача: подняться на 7 этаж" : state.act0ReceptionDone ? "Задача: войти в переговорную HR" : "Задача: подойти к ресепшену")
+    : postBattle
     ? "Акт 2: офис в панике — поговори с людьми"
     : (state.metDana ? "Задача: к лифту" : "Задача: найти Дану");
   syncHUD();
@@ -301,6 +665,11 @@ k.scene("lobby", () => {
   wallsBorder();
   wall(380, 200, 220, 70, [120, 90, 60]);
   k.add([k.text("РЕСЕПШН", { size: 11 }), k.color(232, 226, 212), k.pos(420, 220)]);
+  if (state.act === 0 && state.act0ReceptionDone && !state.interviewDone) {
+    exitDoor(640, 190, 120, 38, "HR", "interview");
+    k.add([k.text("ПЕРЕГОВОРНАЯ HR", { size: 9 }), k.color(232, 226, 212), k.opacity(0.75), k.pos(640, 170)]);
+    addCrowdWalker([{ x: 490, y: 285 }, { x: 690, y: 245 }], 34, CHARS.receptionist);
+  }
 
   exitDoor(740, 90, 180, 40, "▶ ЛИФТ", "elevator");
   k.add([k.text(postBattle ? "NEXCORE · LOBBY · EMERGENCY MODE" : "NEXCORE · LOBBY", { size: 11 }), k.color(postBattle ? 194 : 232, postBattle ? 32 : 226, postBattle ? 42 : 212), k.opacity(0.7), k.pos(40, 40)]);
@@ -336,6 +705,36 @@ k.scene("lobby", () => {
   // --- receptionist ---
   if (!postBattle) {
     addNPC(490, 260, CHARS.receptionist, () => {
+      if (state.act === 0 && !state.act0ReceptionDone) {
+        openDialog("РЕСЕПШН", "Добро пожаловать в NexCore. Вы на собеседование? Система уже отметила ваш вход, хотя бейдж я вам ещё не выдала. Это... нормально. Наверное.", [
+          { text: "Да, на собеседование", action: () => openDialog("РЕСЕПШН", "Вас ждёт Айгерим из HR. Я провожу вас в переговорную: первый день в этой компании лучше начинать не с самостоятельного блуждания по лифтам.", [
+            { text: "Спасибо, идём", action: () => {
+              state.act0ReceptionDone = true;
+              state.task = "Задача: пройти собеседование у Айгерим";
+              syncHUD();
+              logLine("Ресепшн открыла переговорную HR и пошла впереди, чтобы провести тебя к Айгерим.");
+              clearDialog();
+            } }
+          ]) },
+          { text: "Почему система уже знает?", action: () => openDialog("РЕСЕПШН", "У нас NEXAI помогает с безопасностью, расписанием, доступами и... иногда с интуицией. Не переживайте. На собеседовании Айгерим объяснит лучше меня.", [
+            { text: "Ладно, проводите", action: () => {
+              state.act0ReceptionDone = true;
+              state.task = "Задача: пройти собеседование у Айгерим";
+              syncHUD();
+              logLine("Ресепшн открыла переговорную HR и пошла впереди, чтобы провести тебя к Айгерим.");
+              clearDialog();
+            } }
+          ]) }
+        ]);
+        return;
+      }
+      if (state.act === 0) {
+        openDialog("РЕСЕПШН", "Айгерим уже ждёт в переговорной. Я открыла вам проход — не заставляйте HR думать, что лифт вас съел.", [
+          { text: "Иду", action: clearDialog },
+          { text: "Осмотреть холл", action: clearDialog }
+        ]);
+        return;
+      }
       openDialog("РЕСЕПШН", "Доброй ночи. На входе сегодня тихо, никто кроме своих не приходил. Дана прошла четырнадцать минут назад — ушла на 7-й этаж. Сказала, что ждёт вас у лифта.", [
         { text: "Что-то странное замечали?", action: () => openDialog("РЕСЕПШН", "Кофемашина на 10-м срабатывает сама — наливает четыре кофе подряд каждую ночь в 03:33. Думали, чьи-то скрипты. Думали — пранк.", [
           { text: "Спасибо", action: clearDialog }
@@ -349,6 +748,14 @@ k.scene("lobby", () => {
   } else {
     // receptionist is missing post-battle; only the desk
     k.add([k.text("стул пуст", { size: 9 }), k.color(154, 147, 132), k.opacity(0.7), k.pos(465, 244)]);
+  }
+
+  if (state.act === 0 && state.act0ReceptionDone && !state.interviewDone) {
+    addNPC(690, 245, CHARS.receptionist, () => {
+      openDialog("РЕСЕПШН", "Вот переговорная HR. Айгерим внутри. Заходите, я подожду у ресепшна — если лифт начнёт давать советы до собеседования, не слушайте.", [
+        { text: "Спасибо", action: clearDialog }
+      ]);
+    });
   }
 
   // --- panicking intern (only post-battle) ---
@@ -371,7 +778,7 @@ k.scene("lobby", () => {
   }
 
   // --- Dana NPC: in lobby only in act 1; after aftermath she stays in floor12 ---
-  if (!postBattle && !state.metDana) {
+  if (state.act !== 0 && !postBattle && !state.metDana) {
     addNPC(500, 380, CHARS.dana, () => {
       openDialog("ДАНА", "Ну наконец-то. Слушай, прод не падал так с 2027-го. Логи путаются: запросы отвечают «200 OK» с пустым body, потом «503» с целым стек-трейсом обратно в наш репозиторий. Серик не отвечает со вчерашнего дня, Тимур говорит «всё под контролем» — это его коронная фраза перед катастрофой.", [
         { text: "Что с NEXAI?", action: () => openDialog("ДАНА", "Шесть месяцев назад мы запустили его автоматизировать билды. Через два месяца он начал ревьюить пул-реквесты лучше Серика — Серик сначала злился, потом сдался. Через четыре — он автоматизировал найм. Сейчас, кажется, он автоматизирует всё, до чего может дотянуться. И я думаю, дотянулся он уже до большего, чем мы думали.", [
@@ -433,52 +840,90 @@ k.scene("elevator", () => {
   const panel = k.add([k.pos(480, 210), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-26, -36), 52, 72) }), "npc", { _talk: panelTalk }]);
   panel.add([k.rect(52, 72), k.color(58, 47, 36), k.pos(0, 0), k.anchor("center")]);
   panel.add([k.rect(44, 64), k.color(26, 20, 16), k.pos(0, 0), k.anchor("center")]);
-  const labels = ["12", "10", "7", "3", "1"];
+  const labels = ["12", "11", "10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
   for (let i = 0; i < labels.length; i++) {
-    const by = -26 + i * 12;
-    panel.add([k.circle(4), k.color(42, 37, 32), k.pos(0, by), k.anchor("center")]);
-    panel.add([k.text(labels[i], { size: 8 }), k.color(154, 163, 154), k.pos(0, by - 4), k.anchor("center")]);
+    const col = i < 6 ? -11 : 11;
+    const by = -28 + (i % 6) * 11;
+    panel.add([k.circle(4), k.color(42, 37, 32), k.pos(col, by), k.anchor("center")]);
+    panel.add([k.text(labels[i], { size: 7 }), k.color(labels[i] === "12" ? 194 : 154, labels[i] === "12" ? 32 : 163, labels[i] === "12" ? 42 : 154), k.pos(col, by - 4), k.anchor("center")]);
   }
 
   function panelTalk() {
     const opts = [];
     const postBattle = state.sawAftermath;
     const act3 = state.act >= 3;
-    if (!state.surpriseDone) {
-      opts.push({ text: "Этаж 7", action: () => { clearDialog(); playCutscene(CUTSCENES.surprise, () => { state.surpriseDone = true; state.gotServerTask = false; state.task = "Задача: сесть за своё рабочее место"; syncHUD(); k.go("floor7"); }); } });
+    const goFloor = (scene) => {
+      state.arriveFromElevator = true;
+      clearDialog();
+      k.go(scene);
+    };
+    if (state.act === 0) {
+      if (!state.act0ReceptionDone) {
+        openDialog("Панель лифта", "› доступ к лифту временно ограничен\n› сначала отметьтесь на ресепшене\n› статус кандидата: ожидает сопровождения", [
+          { text: "Вернуться к ресепшену", action: clearDialog }
+        ]);
+        return;
+      }
+      if (!state.interviewDone) {
+        openDialog("Панель лифта", "› доступ к лифту временно ограничен\n› сначала пройдите собеседование у Айгерим\n› переговорная HR открыта на 1 этаже", [
+          { text: "Вернуться в холл", action: clearDialog }
+        ]);
+        return;
+      }
+      const tourStops = [
+        ["Этаж 11 — management / roadmap", "floor11_tour"],
+        ["Этаж 10 — финансы / комната отдыха", "floor10_tour"],
+        ["Этаж 9 — security / IAM", "floor9_tour"],
+        ["Этаж 8 — client success / столовая", "floor8_tour"],
+        ["Этаж 7 — разработка", "firstday7"],
+        ["Этаж 6 — QA / тестовые стенды", "floor6_tour"],
+        ["Этаж 5 — marketing / PR", "floor5_tour"],
+        ["Этаж 4 — data quality", "floor4_tour"],
+        ["Этаж 3 — HR / доступы", "floor3_tour"],
+        ["Этаж 2 — support / incident desk", "floor2_tour"],
+        ["Этаж 1 — холл", "lobby"]
+      ];
+      opts.push({ text: "Этаж 12 — ⟨LOCKED: серверная⟩", action: () => openDialog("Панель лифта", "› 12 этаж закрыт для онбординга\n› причина: серверная, холод, шум, дорогие ошибки\n› доступ выдаёт только Серик при инциденте", [{ text: "Закрыть", action: clearDialog }]) });
+      tourStops.forEach(([text, scene]) => {
+        opts.push({ text, action: () => goFloor(scene) });
+      });
+    } else if (!state.surpriseDone) {
+      opts.push({ text: "Этаж 7", action: () => { clearDialog(); playCutscene(CUTSCENES.surprise, () => { state.surpriseDone = true; state.gotServerTask = false; state.task = "Задача: сесть за своё рабочее место"; syncHUD(); state.arriveFromElevator = true; k.go("floor7"); }); } });
     } else {
       // floor 12: locked during the normal office-work stretch of Act 2
       if (postBattle || state.gotServerTask) {
-        opts.push({ text: postBattle ? "Этаж 12 — серверная (повреждена)" : "Этаж 12 — серверная", action: () => { clearDialog(); k.go(postBattle ? "floor12_aftermath" : "floor12"); } });
+        opts.push({ text: postBattle ? "Этаж 12 — серверная (повреждена)" : "Этаж 12 — серверная", action: () => goFloor(postBattle ? "floor12_aftermath" : "floor12") });
       } else {
         opts.push({ text: "Этаж 12 — ⟨ACCESS DENIED⟩", action: () => openDialog("Панель лифта", "› серверная доступна только по инциденту P0. Текущий статус: обычный рабочий день. Пожалуйста, вернитесь к задачам.", [{ text: "Закрыть", action: clearDialog }]) });
       }
       if (state.danaOfficeInvite || state.danaAgentSeen) {
-        opts.push({ text: "Этаж 8 — офис Даны", action: () => { clearDialog(); k.go("floor8"); } });
+        opts.push({ text: "Этаж 8 — офис Даны", action: () => goFloor("floor8") });
       }
       // floor 10: locked until post-battle
       if (postBattle) {
-        opts.push({ text: "Этаж 10 — комната отдыха", action: () => { clearDialog(); k.go("floor10"); } });
+        opts.push({ text: "Этаж 10 — комната отдыха", action: () => goFloor("floor10") });
       } else {
         opts.push({ text: "Этаж 10 — ⟨ACCESS DENIED⟩", action: () => openDialog("Панель лифта", "› access denied · NEXAI временно ограничил пассажирский трафик в зону «non-essential».", [{ text: "Закрыть", action: clearDialog }]) });
       }
-      opts.push({ text: "Этаж 7 — отдел", action: () => { clearDialog(); k.go("floor7"); } });
+      opts.push({ text: "Этаж 7 — отдел", action: () => goFloor("floor7") });
       // floor 3: locked until post-battle
       if (postBattle) {
-        opts.push({ text: "Этаж 3 — HR / аудит", action: () => { clearDialog(); k.go("floor3"); } });
+        opts.push({ text: "Этаж 3 — HR / аудит", action: () => goFloor("floor3") });
       } else {
         opts.push({ text: "Этаж 3 — ⟨ACCESS DENIED⟩", action: () => openDialog("Панель лифта", "› access denied · «HR ресурс перепланирован под автоматический процесс»", [{ text: "Закрыть", action: clearDialog }]) });
       }
-      opts.push({ text: "Этаж 1 — холл", action: () => { clearDialog(); k.go("lobby"); } });
+      opts.push({ text: "Этаж 1 — холл", action: () => goFloor("lobby") });
       if (act3) {
-        opts.push({ text: "Этаж 7 — WAR ROOM (Серик)", action: () => { clearDialog(); k.go("floor7_lab"); } });
-        opts.push({ text: "Этаж 5 — маркетинг / PR", action: () => { clearDialog(); k.go("floor5"); } });
-        opts.push({ text: "Этаж 14 — крыша / антенна", action: () => { clearDialog(); k.go("floor14"); } });
-        opts.push({ text: "Подвал -1 — ядро NEXAI", action: () => { clearDialog(); k.go("basement"); } });
+        opts.push({ text: "Этаж 7 — WAR ROOM (Серик)", action: () => goFloor("floor7_lab") });
+        opts.push({ text: "Этаж 5 — маркетинг / PR", action: () => goFloor("floor5") });
+        opts.push({ text: "Этаж 14 — крыша / антенна", action: () => goFloor("floor14") });
+        opts.push({ text: "Подвал -1 — ядро NEXAI", action: () => goFloor("basement") });
       }
     }
     opts.push({ text: "Отойти", action: clearDialog });
-    openDialog("Панель лифта", state.surpriseDone
+    openDialog("Панель лифта", state.act === 0
+      ? "› режим онбординга · доступны этажи 1–11 · 12 этаж закрыт"
+      : state.surpriseDone
       ? (postBattle
           ? "› emergency mode · доступ ко всем этажам временно открыт инженером Камилой (см. серверная резервная)"
           : "Куда?")

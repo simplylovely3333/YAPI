@@ -9,6 +9,8 @@ let laptopOpen = false;
 let laptopObjs = [];
 let codePuzzleOpen = false;
 let activeCodePuzzle = null;
+let dialogReadyAt = 0;
+let dialogChoiceCols = 1;
 
 // single source of truth — any UI modal that should freeze movement & interactions
 function isInputBlocked() {
@@ -170,7 +172,7 @@ function renderCodeStep() {
 
 function openCodePuzzle(config) {
   if (!codeTerminal || !codeTerminalInput || !codeTerminalForm) {
-    openDialog(config.title || "Терминал", "HTML-терминал не найден. Нужен index.html с #code-terminal.", [
+    openDialog(config.title || "Терминал", "Терминал ввода кода не найден. Нужен игровой shell с #code-terminal.", [
       { text: "Закрыть", action: clearDialog }
     ]);
     return;
@@ -288,25 +290,28 @@ function clearDialog() {
   dialogObjs.forEach((o) => o.destroy());
   dialogObjs = [];
   dialogOpen = false;
+  dialogReadyAt = k.time() + 0.08;
 }
 
 function openDialog(speaker, line, choices, portraitOverride) {
   clearDialog();
   dialogOpen = true;
+  dialogReadyAt = k.time() + 0.18;
   Aud.dialogOpen();
 
   const portrait = portraitOverride || findCharByName(speaker);
-  const portraitW = portrait ? 140 : 0;
+  const portraitW = portrait ? 124 : 0;
   // dialog auto-shrinks and shifts up when many choices
   const nChoices = choices.length;
   const useTwoCols = nChoices > 4;
+  dialogChoiceCols = useTwoCols ? 2 : 1;
   const choiceRows = useTwoCols ? Math.ceil(nChoices / 2) : nChoices;
-  const choicesHeight = 6 + choiceRows * 28;
-  const boxH = 160;
+  const choicesHeight = 8 + choiceRows * 34;
+  const boxH = 190;
   const totalH = boxH + choicesHeight;
-  const boxX = 40;
-  const boxY = Math.max(60, 590 - totalH); // anchor to bottom but never overflow top bar
-  const boxW = 880;
+  const boxX = 30;
+  const boxY = Math.max(40, 590 - totalH); // anchor to bottom but never overflow top bar
+  const boxW = 900;
   const textX = boxX + 20 + portraitW;
   const textW = boxW - 20 - portraitW - 20;
 
@@ -356,7 +361,7 @@ function openDialog(speaker, line, choices, portraitOverride) {
 
   // speaker name + separator
   dialogObjs.push(k.add([
-    k.text("▌ " + speaker, { size: 16 }),
+    k.text("▌ " + speaker, { size: 18 }),
     k.color(194, 32, 42),
     k.pos(textX, boxY + 16),
     k.fixed()
@@ -365,15 +370,15 @@ function openDialog(speaker, line, choices, portraitOverride) {
     k.rect(textW, 1),
     k.color(194, 32, 42),
     k.opacity(0.3),
-    k.pos(textX, boxY + 42),
+    k.pos(textX, boxY + 46),
     k.fixed()
   ]));
 
   // dialog text
   dialogObjs.push(k.add([
-    k.text(line, { size: 15, width: textW }),
-    k.color(232, 226, 212),
-    k.pos(textX, boxY + 50),
+    k.text(line, { size: 18, width: textW }),
+    k.color(248, 244, 232),
+    k.pos(textX, boxY + 58),
     k.fixed()
   ]));
 
@@ -383,9 +388,9 @@ function openDialog(speaker, line, choices, portraitOverride) {
     const col = useTwoCols ? (i % 2) : 0;
     const row = useTwoCols ? Math.floor(i / 2) : i;
     const btnX = boxX + col * (btnW + 4);
-    const btnY = boxY + boxH + 6 + row * 28;
+    const btnY = boxY + boxH + 8 + row * 34;
     const btn = k.add([
-      k.rect(btnW, 24),
+      k.rect(btnW, 30),
       k.color(20, 24, 30),
       k.opacity(0.95),
       k.outline(1, k.rgb(120, 32, 36)),
@@ -393,22 +398,22 @@ function openDialog(speaker, line, choices, portraitOverride) {
       k.area(),
       k.fixed(),
       "dialog-btn",
-      { _idx: i, _action: c.action, _selected: i === 0 }
+      { _idx: i, _row: row, _col: col, _action: c.action, _selected: i === 0 }
     ]);
     // truncate long labels in two-col mode so they fit
     const labelText = "  " + (i + 1) + ". " + c.text;
     const maxLen = useTwoCols ? 56 : 200;
     const shown = labelText.length > maxLen ? labelText.slice(0, maxLen - 1) + "…" : labelText;
     const lbl = k.add([
-      k.text(shown, { size: 12 }),
-      k.color(232, 226, 212),
-      k.pos(btnX + 10, btnY + 6),
+      k.text(shown, { size: 14 }),
+      k.color(248, 244, 232),
+      k.pos(btnX + 12, btnY + 8),
       k.fixed()
     ]);
     btn.onUpdate(() => {
       btn.color = btn._selected ? k.rgb(60, 14, 18) : k.rgb(20, 24, 30);
     });
-    btn.onClick(() => { c.action(); });
+    btn.onClick(() => { if (k.time() >= dialogReadyAt) c.action(); });
     dialogObjs.push(btn, lbl);
   });
 }
@@ -416,20 +421,51 @@ function openDialog(speaker, line, choices, portraitOverride) {
 function nextDialogSelection(dir) {
   const btns = k.get("dialog-btn");
   if (!btns.length) return;
-  let idx = btns.findIndex((b) => b._selected);
+  const sorted = btns.slice().sort((a, b) => a._idx - b._idx);
+  let idx = sorted.findIndex((b) => b._selected);
   if (idx < 0) idx = 0;
-  btns[idx]._selected = false;
-  idx = (idx + dir + btns.length) % btns.length;
-  btns[idx]._selected = true;
+  sorted[idx]._selected = false;
+  idx = (idx + dir + sorted.length) % sorted.length;
+  sorted[idx]._selected = true;
+  Aud.uiBlip();
+}
+
+function moveDialogSelection(dx, dy) {
+  const btns = k.get("dialog-btn");
+  if (!btns.length) return;
+  if (dialogChoiceCols === 1 || dx === 0) {
+    nextDialogSelection(dy || dx);
+    return;
+  }
+  const selected = btns.find((b) => b._selected) || btns[0];
+  const target = btns.find((b) => b._row === selected._row && b._col === selected._col + dx);
+  if (!target) return;
+  selected._selected = false;
+  target._selected = true;
+  Aud.uiBlip();
+}
+
+function chooseDialogNumber(n) {
+  if (k.time() < dialogReadyAt) return;
+  const btn = k.get("dialog-btn").find((b) => b._idx === n - 1);
+  if (btn) btn._action();
 }
 
 function confirmDialogSelection() {
+  if (k.time() < dialogReadyAt) return;
   const btn = k.get("dialog-btn").find((b) => b._selected);
   if (btn) btn._action();
 }
 
-k.onKeyPress("up", () => { if (dialogOpen) nextDialogSelection(-1); });
-k.onKeyPress("down", () => { if (dialogOpen) nextDialogSelection(1); });
-k.onKeyPress("w", () => { if (dialogOpen) nextDialogSelection(-1); });
-k.onKeyPress("s", () => { if (dialogOpen) nextDialogSelection(1); });
+k.onKeyPress("up", () => { if (dialogOpen) moveDialogSelection(0, -1); });
+k.onKeyPress("down", () => { if (dialogOpen) moveDialogSelection(0, 1); });
+k.onKeyPress("left", () => { if (dialogOpen) moveDialogSelection(-1, 0); });
+k.onKeyPress("right", () => { if (dialogOpen) moveDialogSelection(1, 0); });
+k.onKeyPress("w", () => { if (dialogOpen) moveDialogSelection(0, -1); });
+k.onKeyPress("s", () => { if (dialogOpen) moveDialogSelection(0, 1); });
+k.onKeyPress("a", () => { if (dialogOpen) moveDialogSelection(-1, 0); });
+k.onKeyPress("d", () => { if (dialogOpen) moveDialogSelection(1, 0); });
+for (let i = 1; i <= 9; i++) {
+  k.onKeyPress(String(i), () => { if (dialogOpen) chooseDialogNumber(i); });
+}
 k.onButtonPress("interact", () => { if (dialogOpen) confirmDialogSelection(); });

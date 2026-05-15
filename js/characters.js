@@ -75,6 +75,36 @@ const CHARS = {
     skin: "#f0c8a0", hair: "#3a2418", hairStyle: "headphones",
     shirt: "#9aa39a", pants: "#1f1f24",
     name: "QA"
+  },
+  support: {
+    skin: "#e8c8a8", hair: "#2a1810", hairStyle: "headphones",
+    shirt: "#62a5e8", pants: "#1f2530", accent: "#ffb347",
+    name: "Support"
+  },
+  data_eng: {
+    skin: "#d8b08a", hair: "#1a1410", hairStyle: "ponytail",
+    shirt: "#8fd0a8", pants: "#202830", accessory: "glasses",
+    name: "Data Eng"
+  },
+  marketer: {
+    skin: "#f0c8a0", hair: "#3a2418", hairStyle: "long",
+    shirt: "#ff8fb3", pants: "#2a2630", accent: "#ffffff",
+    name: "PR"
+  },
+  security: {
+    skin: "#d0a878", hair: "#1a1010", hairStyle: "buzz",
+    facialHair: "mustache", shirt: "#7d88ff", pants: "#141824",
+    name: "Security"
+  },
+  finance: {
+    skin: "#e0b890", hair: "#3a2a1a", hairStyle: "bun",
+    shirt: "#d7c66a", pants: "#1f1f24", accessory: "glasses",
+    name: "Finance"
+  },
+  executive: {
+    skin: "#e8c8a8", hair: "#1a1410", hairStyle: "short",
+    shirt: "#d8d8e8", pants: "#15151d", accent: "#c2202a",
+    name: "Executive"
   }
 };
 
@@ -319,4 +349,3 @@ function humanoid(opts = {}) {
 
   return root;
 }
-

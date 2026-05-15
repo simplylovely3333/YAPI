@@ -121,7 +121,7 @@ k.scene("menu", () => {
       Aud.uiSelect();
       resetState();
       state.act = 0;
-      playCutscene(CUTSCENES.act0_metro, () => k.go("interview"));
+      playCutscene(CUTSCENES.act0_metro, () => k.go("lobby"));
     } },
     { id: "continue", label: "ПРОДОЛЖИТЬ", disabled: !hasAnySave(), action: () => { Aud.uiSelect(); k.go("saves", { mode: "load", returnTo: "menu" }); } },
     { id: "quit", label: "ВЫХОД", action: () => { Aud.uiBack(); k.go("quit"); } }
@@ -319,7 +319,7 @@ k.scene("cutscene", ({ frames, onEnd }) => {
     const frame = frames[idx];
     if (!frame) return;
     if (typed < frame.line.length) {
-      typed = Math.min(frame.line.length, typed + k.dt() * 38);
+      typed = Math.min(frame.line.length, typed + k.dt() * 52);
       if (k.time() - lastTickAt > 0.05 && Math.floor(typed) % 3 === 0) {
         lastTickAt = k.time();
         Aud.dialogTick();
@@ -340,18 +340,18 @@ k.scene("cutscene", ({ frames, onEnd }) => {
     k.drawText({ text: `SCENE ${String(idx + 1).padStart(2, "0")} / ${String(frames.length).padStart(2, "0")}`, size: 10, pos: k.vec2(936, 22), anchor: "topright", color: k.rgb(194, 32, 42) });
 
     // dialog box
-    k.drawRect({ pos: k.vec2(40, 430), width: 880, height: 110, color: k.rgb(10, 12, 16), opacity: 0.94 });
-    k.drawRect({ pos: k.vec2(40, 430), width: 880, height: 2, color: k.rgb(194, 32, 42) });
-    k.drawRect({ pos: k.vec2(40, 538), width: 880, height: 2, color: k.rgb(194, 32, 42) });
+    k.drawRect({ pos: k.vec2(34, 390), width: 892, height: 154, color: k.rgb(6, 8, 12), opacity: 0.98 });
+    k.drawRect({ pos: k.vec2(34, 390), width: 892, height: 3, color: k.rgb(194, 32, 42) });
+    k.drawRect({ pos: k.vec2(34, 541), width: 892, height: 3, color: k.rgb(194, 32, 42) });
 
-    k.drawText({ text: "▌ " + frame.who, size: 14, pos: k.vec2(60, 446), color: k.rgb(194, 32, 42) });
-    k.drawText({ text: frame.line.slice(0, Math.floor(typed)), size: 17, pos: k.vec2(60, 472), width: 840, color: k.rgb(232, 226, 212) });
+    k.drawText({ text: "▌ " + frame.who, size: 18, pos: k.vec2(58, 410), color: k.rgb(194, 32, 42) });
+    k.drawText({ text: frame.line.slice(0, Math.floor(typed)), size: 20, pos: k.vec2(58, 440), width: 844, color: k.rgb(248, 244, 232) });
 
     if (Math.sin(k.time() * 4) > 0) {
-      k.drawText({ text: "‹E / SPACE› далее", size: 11, pos: k.vec2(904, 528), anchor: "topright", color: k.rgb(154, 147, 132) });
+      k.drawText({ text: "‹E / SPACE› далее", size: 13, pos: k.vec2(904, 520), anchor: "topright", color: k.rgb(190, 184, 172) });
     }
     for (let i = 0; i < frames.length; i++) {
-      k.drawRect({ pos: k.vec2(60 + i * 12, 528), width: 8, height: 3, color: i === idx ? k.rgb(194, 32, 42) : (i < idx ? k.rgb(106, 31, 36) : k.rgb(42, 42, 42)) });
+      k.drawRect({ pos: k.vec2(58 + i * 12, 522), width: 8, height: 3, color: i === idx ? k.rgb(194, 32, 42) : (i < idx ? k.rgb(106, 31, 36) : k.rgb(42, 42, 42)) });
     }
   });
 

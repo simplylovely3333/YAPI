@@ -14,6 +14,7 @@ function roomFloor(palette) {
   // grid lines
   for (let x = 0; x < 960; x += TILE) k.add([k.rect(1, 600), k.color(255, 255, 255), k.opacity(0.05), k.pos(x, 0), k.fixed()]);
   for (let y = 0; y < 600; y += TILE) k.add([k.rect(960, 1), k.color(255, 255, 255), k.opacity(0.05), k.pos(0, y), k.fixed()]);
+  createGameHUD();
 }
 
 function wall(x, y, w, h, color = [90, 100, 120]) {
@@ -72,9 +73,14 @@ function wallsBorder() {
 // PLAYER + ROOM SETUP
 // =====================================================================
 function makePlayer(x, y) {
-  const spawn = resumeFromSave && state.playerPos
+  const liftSpawn = state.arriveFromElevator && ELEVATOR_SPAWNS[state.scene];
+  const spawn = liftSpawn
+    ? liftSpawn
+    : resumeFromSave && state.playerPos
     ? { x: state.playerPos.x, y: state.playerPos.y }
     : { x, y };
+  const spawnFace = liftSpawn?.face;
+  state.arriveFromElevator = false;
   resumeFromSave = false;
   const p = k.add([
     k.pos(spawn.x, spawn.y),
@@ -82,10 +88,12 @@ function makePlayer(x, y) {
     k.body(),
     k.anchor("center"),
     "player",
-    { speed: 200, face: "down" }
+    { speed: 200, face: spawnFace || "down" }
   ]);
   const look = state.surpriseDone ? CHARS.player_senior : CHARS.player;
   p.add(humanoid(look));
+  const h = p.get("humanoid")[0];
+  if (h && spawnFace) h.face = spawnFace;
   return p;
 }
 

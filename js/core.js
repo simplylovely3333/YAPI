@@ -2,6 +2,39 @@
 // STACK OVERFLOW — Act 1: First Commit  (Kaplay/Kaboom edition)
 // =====================================================================
 
+function ensureGameShell() {
+  if (document.getElementById("game")) return;
+  document.body.innerHTML = `
+    <main class="shell" aria-label="STACK OVERFLOW">
+      <div class="frame">
+        <div id="game"></div>
+      </div>
+
+      <section class="code-terminal" id="code-terminal" aria-label="Мини-игра: ввод кода" hidden>
+        <div class="terminal-window">
+          <div class="terminal-head">
+            <div>
+              <p class="terminal-kicker" id="code-terminal-kicker">// remote laptop session</p>
+              <h2 id="code-terminal-title">PATCH CONSOLE</h2>
+            </div>
+            <button type="button" id="code-terminal-close" aria-label="Закрыть терминал">×</button>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-log" id="code-terminal-log" aria-live="polite"></div>
+            <form class="terminal-input-row" id="code-terminal-form" autocomplete="off">
+              <span>dev@aigerim:~$</span>
+              <input id="code-terminal-input" name="code" type="text" spellcheck="false" autocomplete="off" aria-label="Введите строку кода">
+              <button type="submit">RUN</button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+ensureGameShell();
+
 const k = kaplay({
   width: 960,
   height: 600,
@@ -19,17 +52,7 @@ const k = kaplay({
   }
 });
 
-// ---------- side-panel DOM hooks ----------
-const ui = {
-  act: document.querySelector("#act"),
-  task: document.querySelector("#task"),
-  place: document.querySelector("#place"),
-  lastAction: document.querySelector("#last-action"),
-  fear: document.querySelector("#fear"),
-  coffee: document.querySelector("#coffee"),
-  log: document.querySelector("#log"),
-  inv: document.querySelector("#inventory")
-};
+let gameHud = null;
 
 // =====================================================================
 // QUESTS — Act 3 task list
@@ -75,30 +98,9 @@ function pickUp(itemId) {
 function hasItem(itemId) { return !!state.inventory[itemId]; }
 
 function syncQuests() {
-  if (!ui.inv) return;
   if (!state.quests) state.quests = {};
   if (!state.inventory) state.inventory = {};
-  ui.inv.replaceChildren();
-  // active quests
-  const items = Object.entries(QUEST_DB)
-    .filter(([id]) => state.quests[id])
-    .sort(([, a], [, b]) => 0);
-  for (const [id, q] of items) {
-    const el = document.createElement("div");
-    el.className = "item";
-    const done = state.quests[id] === "done";
-    el.innerHTML = `<strong style="color:${done ? "#a8ff65" : "#c2202a"}">${done ? "✓" : "▸"}</strong>${q.title}`;
-    if (done) el.style.opacity = "0.45";
-    ui.inv.append(el);
-  }
-  // inventory
-  const owned = Object.keys(state.inventory).filter((k) => state.inventory[k]);
-  for (const it of owned) {
-    const el = document.createElement("div");
-    el.className = "item";
-    el.innerHTML = `<strong style="color:#ffb347">●</strong>${INV_DB[it] || it}`;
-    ui.inv.append(el);
-  }
+  refreshGameHUD();
 }
 
 function defaultState() {
@@ -108,10 +110,20 @@ function defaultState() {
     coffee: 45,
     // Act 0 — onboarding
     interviewDone: false,
+    act0ReceptionDone: false,
+    act0EscortInterview: false,
     fd7Started: false,
+    fd7BriefingDone: false,
     fd7Nexai: false,
     fd7Floors: false,
     fd7Team: false,
+    act0DanaTask: false,
+    act0DanaIntroStarted: false,
+    act0DanaIntroDone: false,
+    act0KnowledgeConsole: false,
+    act0KnowledgePeople: false,
+    act0KnowledgeDocs: false,
+    act0DanaEscort: false,
     act0Done: false,
     // Act 1
     metDana: false,
@@ -143,10 +155,12 @@ function defaultState() {
     // general
     scene: "lobby",
     playerPos: { x: 120, y: 480 },
+    arriveFromElevator: false,
     act: 1,
     quests: {},
     inventory: {},
-    factions: { timur: 0, serik: 0, dana: 0, kamila: 0 }
+    factions: { timur: 0, serik: 0, dana: 0, kamila: 0 },
+    log: []
   };
 }
 
@@ -242,12 +256,7 @@ function loadGame() { // legacy: loads most-recent slot
 }
 
 function syncHUD() {
-  const a = state.act == null ? 1 : state.act;
-  if (ui.act) ui.act.textContent = `АКТ ${a}: ${actTitle(a)}`;
-  ui.task.textContent = state.task;
-  if (ui.place) ui.place.textContent = `Локация: ${sceneTitle(state.scene)}`;
-  ui.fear.value = state.fear;
-  ui.coffee.value = state.coffee;
+  refreshGameHUD();
 }
 
 function actTitle(act) {
@@ -265,6 +274,15 @@ function sceneTitle(scene) {
   const titles = {
     interview: "собеседование · HR",
     firstday7: "7 этаж · первый день",
+    floor2_tour: "2 этаж · support",
+    floor3_tour: "3 этаж · HR",
+    floor4_tour: "4 этаж · data quality",
+    floor5_tour: "5 этаж · marketing",
+    floor6_tour: "6 этаж · QA",
+    floor8_tour: "8 этаж · client success",
+    floor9_tour: "9 этаж · security",
+    floor10_tour: "10 этаж · финансы",
+    floor11_tour: "11 этаж · management",
     menu: "главное меню",
     lobby: "1 этаж · холл",
     elevator: "лифт",
@@ -288,9 +306,102 @@ function sceneTitle(scene) {
   return titles[scene] || scene || "—";
 }
 
+const ELEVATOR_SPAWNS = {
+  lobby: { x: 760, y: 165, face: "down" },
+  firstday7: { x: 840, y: 500, face: "left" },
+  floor2_tour: { x: 840, y: 500, face: "left" },
+  floor3_tour: { x: 840, y: 500, face: "left" },
+  floor4_tour: { x: 840, y: 500, face: "left" },
+  floor5_tour: { x: 840, y: 500, face: "left" },
+  floor6_tour: { x: 840, y: 500, face: "left" },
+  floor8_tour: { x: 840, y: 500, face: "left" },
+  floor9_tour: { x: 840, y: 500, face: "left" },
+  floor10_tour: { x: 840, y: 500, face: "left" },
+  floor11_tour: { x: 840, y: 500, face: "left" },
+  floor7: { x: 840, y: 500, face: "left" },
+  floor8: { x: 88, y: 500, face: "right" },
+  floor12: { x: 840, y: 500, face: "left" },
+  floor12_aftermath: { x: 840, y: 125, face: "down" },
+  floor3: { x: 840, y: 500, face: "left" },
+  floor5: { x: 840, y: 500, face: "left" },
+  floor10: { x: 840, y: 500, face: "left" },
+  floor7_lab: { x: 840, y: 500, face: "left" },
+  basement: { x: 80, y: 500, face: "right" },
+  floor14: { x: 80, y: 500, face: "right" }
+};
+
 function logLine(text) {
-  const p = document.createElement("p");
-  p.textContent = text;
-  ui.log.prepend(p);
-  if (ui.lastAction) ui.lastAction.textContent = `Последнее: ${text}`;
+  if (!state.log) state.log = [];
+  state.log.unshift(text);
+  state.log = state.log.slice(0, 6);
+  refreshGameHUD();
+}
+
+function shortText(text, max = 58) {
+  const s = String(text || "");
+  return s.length > max ? s.slice(0, max - 1) + "…" : s;
+}
+
+function getHudItems() {
+  const quests = Object.entries(state.quests || {})
+    .filter(([, status]) => status)
+    .slice(0, 3)
+    .map(([id, status]) => `${status === "done" ? "✓" : "▸"} ${QUEST_DB[id]?.title || id}`);
+  const items = Object.keys(state.inventory || {})
+    .filter((id) => state.inventory[id])
+    .slice(0, 3)
+    .map((id) => `● ${INV_DB[id] || id}`);
+  return [...quests, ...items].slice(0, 5);
+}
+
+function addHudBar(x, y, w, label, value, fillColor) {
+  const pct = Math.max(0, Math.min(1, value / 100));
+  k.add([k.text(label, { size: 9 }), k.color(232, 226, 212), k.opacity(0.82), k.pos(x, y), k.fixed(), k.z(990), "game-hud"]);
+  k.add([k.rect(w, 8), k.color(12, 14, 18), k.outline(1, k.rgb(65, 51, 54)), k.pos(x + 62, y + 2), k.fixed(), k.z(990), "game-hud"]);
+  k.add([k.rect(Math.max(2, (w - 2) * pct), 6), k.color(fillColor[0], fillColor[1], fillColor[2]), k.pos(x + 63, y + 3), k.fixed(), k.z(991), "game-hud"]);
+}
+
+function createGameHUD() {
+  gameHud = { nodes: [] };
+  const a = state.act == null ? 1 : state.act;
+  const hud = k.add([k.pos(0, 0), k.fixed(), k.z(980), "game-hud"]);
+  gameHud.root = hud;
+
+  hud.add([k.rect(960, 74), k.color(5, 7, 10), k.opacity(0.78), k.pos(0, 0)]);
+  hud.add([k.rect(960, 2), k.color(194, 32, 42), k.opacity(0.78), k.pos(0, 74)]);
+  hud.add([k.text(`АКТ ${a}: ${actTitle(a)}`, { size: 13 }), k.color(255, 179, 71), k.pos(20, 12)]);
+  hud.add([k.text(shortText(state.task, 72), { size: 13 }), k.color(232, 226, 212), k.pos(20, 34)]);
+  hud.add([k.text(`Локация: ${shortText(sceneTitle(state.scene), 28)}`, { size: 10 }), k.color(154, 147, 132), k.pos(20, 55)]);
+
+  addHudBar(650, 14, 190, "ТРЕВОГА", state.fear || 0, [194, 32, 42]);
+  addHudBar(650, 34, 190, "КОФЕИН", state.coffee || 0, [255, 179, 71]);
+
+  const items = getHudItems();
+  const invTitle = items.length ? "ИНВЕНТАРЬ / КВЕСТЫ" : "ИНВЕНТАРЬ: пусто";
+  hud.add([k.text(invTitle, { size: 9 }), k.color(168, 255, 101), k.opacity(0.86), k.pos(650, 53)]);
+
+  const panel = k.add([k.pos(668, 86), k.fixed(), k.z(980), "game-hud"]);
+  panel.add([k.rect(270, 116), k.color(5, 7, 10), k.opacity(0.58), k.outline(1, k.rgb(64, 38, 42)), k.pos(0, 0)]);
+  const visibleItems = items.length ? items : ["нет предметов"];
+  visibleItems.forEach((line, i) => {
+    panel.add([k.text(shortText(line, 34), { size: 9 }), k.color(i < items.length ? 232 : 154, i < items.length ? 226 : 147, i < items.length ? 212 : 132), k.pos(10, 10 + i * 19)]);
+  });
+
+  const logLines = (state.log || []).slice(0, 3);
+  const logPanel = k.add([k.pos(20, 86), k.fixed(), k.z(980), "game-hud"]);
+  logPanel.add([k.rect(390, 82), k.color(5, 7, 10), k.opacity(logLines.length ? 0.5 : 0), k.outline(1, k.rgb(64, 38, 42)), k.pos(0, 0)]);
+  logLines.forEach((line, i) => {
+    logPanel.add([k.text(shortText(line, 54), { size: 9 }), k.color(154, 147, 132), k.pos(10, 10 + i * 21)]);
+  });
+}
+
+function refreshGameHUD() {
+  if (!gameHud || !gameHud.root) return;
+  try {
+    gameHud.root.destroy();
+    for (const obj of k.get("game-hud")) obj.destroy();
+  } catch {
+    // Scene switches can leave stale HUD references; next room draw recreates it.
+  }
+  createGameHUD();
 }
