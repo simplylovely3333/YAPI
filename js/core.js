@@ -29,6 +29,17 @@ function ensureGameShell() {
           </div>
         </div>
       </section>
+
+      <section class="mobile-controls" id="mobile-controls" aria-label="Мобильное управление">
+        <div class="mobile-joystick" id="mobile-joystick" aria-label="Джойстик движения">
+          <div class="mobile-stick" id="mobile-stick"></div>
+        </div>
+        <div class="mobile-actions">
+          <button type="button" class="mobile-btn mobile-btn-small" id="mobile-menu" aria-label="Меню">☰</button>
+          <button type="button" class="mobile-btn mobile-btn-small" id="mobile-laptop" aria-label="Ноутбук">T</button>
+          <button type="button" class="mobile-btn mobile-btn-main" id="mobile-interact" aria-label="Действие">E</button>
+        </div>
+      </section>
     </main>
   `;
 }
@@ -53,6 +64,80 @@ const k = kaplay({
 });
 
 let gameHud = null;
+const mobileInput = { x: 0, y: 0, interactQueued: false };
+
+function setupMobileControls() {
+  const root = document.querySelector("#mobile-controls");
+  const pad = document.querySelector("#mobile-joystick");
+  const stick = document.querySelector("#mobile-stick");
+  const interact = document.querySelector("#mobile-interact");
+  const laptop = document.querySelector("#mobile-laptop");
+  const menu = document.querySelector("#mobile-menu");
+  if (!root || !pad || !stick || !interact || !laptop || !menu) return;
+
+  let activePointer = null;
+  const clampStick = (event) => {
+    const rect = pad.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const max = rect.width * 0.34;
+    let dx = event.clientX - cx;
+    let dy = event.clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > max) {
+      dx = (dx / dist) * max;
+      dy = (dy / dist) * max;
+    }
+    mobileInput.x = Math.abs(dx) < 5 ? 0 : dx / max;
+    mobileInput.y = Math.abs(dy) < 5 ? 0 : dy / max;
+    stick.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+  const releaseStick = () => {
+    activePointer = null;
+    mobileInput.x = 0;
+    mobileInput.y = 0;
+    stick.style.transform = "translate(0, 0)";
+  };
+
+  pad.addEventListener("pointerdown", (event) => {
+    activePointer = event.pointerId;
+    pad.setPointerCapture?.(event.pointerId);
+    clampStick(event);
+    event.preventDefault();
+  });
+  pad.addEventListener("pointermove", (event) => {
+    if (activePointer !== event.pointerId) return;
+    clampStick(event);
+    event.preventDefault();
+  });
+  pad.addEventListener("pointerup", releaseStick);
+  pad.addEventListener("pointercancel", releaseStick);
+
+  const pressAction = (event, action) => {
+    event.preventDefault();
+    Aud.uiBlip?.();
+    action();
+  };
+  interact.addEventListener("pointerdown", (event) => pressAction(event, () => {
+    if (typeof dialogOpen !== "undefined" && dialogOpen && typeof confirmDialogSelection === "function") {
+      confirmDialogSelection();
+      return;
+    }
+    mobileInput.interactQueued = true;
+  }));
+  laptop.addEventListener("pointerdown", (event) => pressAction(event, () => {
+    if (typeof toggleLaptop === "function") toggleLaptop();
+  }));
+  menu.addEventListener("pointerdown", (event) => pressAction(event, () => {
+    if (typeof dialogOpen !== "undefined" && dialogOpen && typeof clearDialog === "function") {
+      clearDialog();
+      return;
+    }
+    if (typeof togglePause === "function") togglePause();
+  }));
+}
+
+setupMobileControls();
 
 // =====================================================================
 // QUESTS — Act 3 task list
@@ -124,6 +209,9 @@ function defaultState() {
     act0KnowledgePeople: false,
     act0KnowledgeDocs: false,
     act0DanaEscort: false,
+    act0CoreTask: false,
+    act0CoreBriefDone: false,
+    act0CoreDiveDone: false,
     act0Done: false,
     // Act 1
     metDana: false,
@@ -283,6 +371,7 @@ function sceneTitle(scene) {
     floor9_tour: "9 этаж · security",
     floor10_tour: "10 этаж · финансы",
     floor11_tour: "11 этаж · management",
+    floor0_core: "0 этаж · ядро NEXAI",
     menu: "главное меню",
     lobby: "1 этаж · холл",
     elevator: "лифт",
@@ -318,6 +407,7 @@ const ELEVATOR_SPAWNS = {
   floor9_tour: { x: 840, y: 500, face: "left" },
   floor10_tour: { x: 840, y: 500, face: "left" },
   floor11_tour: { x: 840, y: 500, face: "left" },
+  floor0_core: { x: 840, y: 500, face: "left" },
   floor7: { x: 840, y: 500, face: "left" },
   floor8: { x: 88, y: 500, face: "right" },
   floor12: { x: 840, y: 500, face: "left" },

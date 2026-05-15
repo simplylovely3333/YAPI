@@ -99,7 +99,29 @@ function makePlayer(x, y) {
 
 function setupPlayerControls(p) {
   p._stepT = 0;
+  function interactWithWorld() {
+    if (isOverlayOnly()) return;
+    let best = null, bestD = 60;
+    for (const npc of k.get("npc")) {
+      const d = p.pos.dist(npc.pos);
+      if (d < bestD) { bestD = d; best = npc; }
+    }
+    if (best) { best._talk(); return; }
+    for (const ex of k.get("exit")) {
+      const px = p.pos.x, py = p.pos.y;
+      if (px > ex.pos.x && px < ex.pos.x + ex.width && py > ex.pos.y - 30 && py < ex.pos.y + ex.height + 30) {
+        Aud.elevatorDing();
+        state.scene = ex._to;
+        k.go(ex._to);
+        return;
+      }
+    }
+  }
   p.onUpdate(() => {
+    if (mobileInput.interactQueued) {
+      mobileInput.interactQueued = false;
+      interactWithWorld();
+    }
     if (isInputBlocked()) {
       const h = p.get("humanoid")[0]; if (h) h.walking = false;
       return;
@@ -109,6 +131,8 @@ function setupPlayerControls(p) {
     if (k.isButtonDown("right")) dx += 1;
     if (k.isButtonDown("up")) dy -= 1;
     if (k.isButtonDown("down")) dy += 1;
+    dx += mobileInput.x;
+    dy += mobileInput.y;
     if (dx || dy) {
       const len = Math.hypot(dx, dy);
       dx /= len; dy /= len;
@@ -128,23 +152,7 @@ function setupPlayerControls(p) {
   });
 
   k.onButtonPress("interact", () => {
-    if (isOverlayOnly()) return;
-    // pick nearest interactable
-    let best = null, bestD = 60;
-    for (const npc of k.get("npc")) {
-      const d = p.pos.dist(npc.pos);
-      if (d < bestD) { bestD = d; best = npc; }
-    }
-    if (best) { best._talk(); return; }
-    for (const ex of k.get("exit")) {
-      const px = p.pos.x, py = p.pos.y;
-      if (px > ex.pos.x && px < ex.pos.x + ex.width && py > ex.pos.y - 30 && py < ex.pos.y + ex.height + 30) {
-        Aud.elevatorDing();
-        state.scene = ex._to;
-        k.go(ex._to);
-        return;
-      }
-    }
+    interactWithWorld();
   });
 
   k.onKeyPress("escape", () => {

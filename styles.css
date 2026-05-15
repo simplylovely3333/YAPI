@@ -14,11 +14,15 @@
 
 * { box-sizing: border-box; }
 
-html, body { overflow-x: hidden; }
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(ellipse at 50% -10%, rgba(194, 32, 42, 0.18), transparent 60%),
     radial-gradient(ellipse at 50% 110%, rgba(0, 0, 0, 0.9), transparent 70%),
@@ -33,6 +37,8 @@ body {
   color: var(--bone);
   font: 15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
   letter-spacing: 0;
+  display: grid;
+  place-items: center;
 }
 
 body::before {
@@ -46,9 +52,9 @@ body::before {
 }
 
 .shell {
-  width: min(1280px, calc(100vw - 28px));
+  width: min(calc(100vw - 16px), calc((100dvh - 32px) * 1.6));
   margin: 0 auto;
-  padding: 22px 0 40px;
+  padding: 8px 0;
   position: relative;
   z-index: 1;
 }
@@ -133,7 +139,8 @@ h1 {
 
 .frame {
   position: relative;
-  padding: 12px;
+  padding: 8px;
+  width: 100%;
   background:
     linear-gradient(180deg, rgba(194, 32, 42, 0.04), transparent 30%),
     rgba(7, 9, 10, 0.92);
@@ -158,6 +165,7 @@ h1 {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 10;
+  max-height: calc(100dvh - 32px);
   background: #050607;
   position: relative;
   overflow: hidden;
@@ -392,6 +400,96 @@ button:hover, button:focus-visible {
 }
 button:active { transform: translateY(0); }
 
+.mobile-controls {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 30;
+  display: none;
+  justify-content: space-between;
+  align-items: end;
+  gap: 18px;
+  padding: 0 max(18px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  pointer-events: none;
+  touch-action: none;
+}
+
+.mobile-joystick,
+.mobile-actions,
+.mobile-btn {
+  pointer-events: auto;
+}
+
+.mobile-joystick {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  border: 1px solid rgba(232, 226, 212, 0.26);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(98, 197, 255, 0.16), transparent 46%),
+    rgba(5, 7, 10, 0.58);
+  box-shadow: inset 0 0 28px rgba(0,0,0,0.62), 0 12px 38px rgba(0,0,0,0.45);
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.mobile-stick {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid rgba(98, 197, 255, 0.78);
+  background: rgba(12, 22, 34, 0.88);
+  box-shadow: 0 0 24px rgba(98, 197, 255, 0.22);
+  transition: transform 0.06s linear;
+}
+
+.mobile-actions {
+  display: grid;
+  grid-template-columns: 58px 58px;
+  grid-template-areas:
+    "menu laptop"
+    "main main";
+  gap: 12px;
+  justify-items: end;
+}
+
+.mobile-btn {
+  border-radius: 50%;
+  border: 1px solid rgba(194, 32, 42, 0.62);
+  background: rgba(8, 10, 14, 0.74);
+  color: #f8f4e8;
+  box-shadow: inset 0 0 18px rgba(194,32,42,0.16), 0 10px 30px rgba(0,0,0,0.42);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.mobile-btn-small {
+  width: 58px;
+  min-height: 58px;
+  padding: 0;
+  font-size: 17px;
+}
+
+#mobile-menu { grid-area: menu; }
+#mobile-laptop { grid-area: laptop; }
+
+.mobile-btn-main {
+  grid-area: main;
+  width: 86px;
+  min-height: 86px;
+  padding: 0;
+  font-size: 25px;
+  border-color: rgba(255, 179, 71, 0.76);
+  background: rgba(54, 31, 14, 0.78);
+}
+
+.mobile-btn:active {
+  transform: scale(0.96);
+  background: rgba(194, 32, 42, 0.28);
+}
+
 .code-terminal {
   position: fixed;
   inset: 0;
@@ -512,4 +610,33 @@ button:active { transform: translateY(0); }
   .panel { min-height: 280px; }
   .terminal-input-row { grid-template-columns: 1fr; }
   .terminal-input-row span { white-space: normal; }
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 860px) {
+  .mobile-controls { display: flex; }
+  #game { max-height: calc(100dvh - 8px); }
+  .shell {
+    width: min(calc(100vw - 8px), calc((100dvh - 8px) * 1.6));
+    padding: 4px 0;
+  }
+  .frame { padding: 4px; }
+}
+
+@media (max-width: 520px) {
+  .mobile-joystick {
+    width: 116px;
+    height: 116px;
+  }
+  .mobile-stick {
+    width: 48px;
+    height: 48px;
+  }
+  .mobile-btn-small {
+    width: 52px;
+    min-height: 52px;
+  }
+  .mobile-btn-main {
+    width: 78px;
+    min-height: 78px;
+  }
 }

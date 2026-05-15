@@ -105,6 +105,12 @@ const CHARS = {
     skin: "#e8c8a8", hair: "#1a1410", hairStyle: "short",
     shirt: "#d8d8e8", pants: "#15151d", accent: "#c2202a",
     name: "Executive"
+  },
+  core_engineer: {
+    skin: "#d0a878", hair: "#d8d8e8", hairStyle: "messy",
+    facialHair: "stubble", accessory: "glasses",
+    shirt: "#202830", pants: "#10141c", accent: "#62c5ff",
+    name: "Инженер ядра"
   }
 };
 
