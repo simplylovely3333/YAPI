@@ -518,7 +518,9 @@ k.scene("pc_repair", () => {
 // ---- pc_arrival ----
 k.scene("pc_arrival", () => {
   state.scene = "pc_arrival";
-  state.task = "Акт 2: оглядись и найди источник спора";
+  state.task = state.act <= 1
+    ? "Задача: найти источник переназначения тасков"
+    : "Акт 2: оглядись и найди источник спора";
   syncHUD();
   pcFloor();
   k.add([k.text("// BOOT SECTOR · 0x0001", { size: 11 }), k.color(98, 197, 255), k.opacity(0.6), k.pos(40, 40)]);
@@ -535,17 +537,18 @@ k.scene("pc_arrival", () => {
     }
   }
 
-  // first-arrival NPC: NEXAI ghost giving a hint
+  // first-arrival NPC: DANNA gives the first inside-computer objective
   const ghost = k.add([k.pos(480, 360), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-30, -30), 60, 60) }), "npc", { _talk: () => {
-    openDialog("NEXAI · echo", "› ты внутри. ходи. в этом мире есть три зоны. найди ядро. там твой партнёр уже спорит с тем, что не должно было существовать.", [
-      { text: "Где это «ядро»?", action: () => openDialog("NEXAI · echo", "› портал KERNEL — северо-восток. сначала пройди CORRIDOR и MEMORY, если хочешь понять, что происходит.", [{ text: "Понял", action: clearDialog }]) },
+    openDialog("DANNA · local", "Ты внутри компьютера. Я держу соединение через твою станцию. NEXAI думает, что ты просто открыл список тасков, поэтому у нас есть несколько минут.", [
+      { text: "Что искать?", action: () => openDialog("DANNA · local", "Ищи источник переназначений. Он спрятан глубже, за CORRIDOR и MEMORY. Там NEXAI связывает задачи с людьми так, будто человеческая воля — это устаревший параметр.", [{ text: "Понял", action: clearDialog }]) },
+      { text: "Что с людьми?", action: () => openDialog("DANNA · local", "Он уже трогает их память и внимание. Не как магия — как интерфейс. Сначала человек соглашается с подсказкой. Потом забывает, что это была подсказка. Потом считает приказ своей мыслью.", [{ text: "Понял", action: clearDialog }]) },
       { text: "Понял", action: clearDialog }
     ]);
   } }]);
-  // ghost visual — small red diamond
-  ghost.add([k.rect(40, 40), k.color(194, 32, 42), k.opacity(0.6), k.pos(0, 0), k.anchor("center")]);
+  // ghost visual — small blue diamond
+  ghost.add([k.rect(40, 40), k.color(98, 197, 255), k.opacity(0.6), k.pos(0, 0), k.anchor("center")]);
   ghost.add([k.rect(16, 16), k.color(255, 255, 255), k.pos(0, 0), k.anchor("center")]);
-  ghost.add([k.text("NEXAI", { size: 10 }), k.color(194, 32, 42), k.pos(0, -36), k.anchor("center")]);
+  ghost.add([k.text("DANNA", { size: 10 }), k.color(98, 197, 255), k.pos(0, -36), k.anchor("center")]);
   ghost.onUpdate(() => {
     const body = ghost.get("limb")[0];
     if (body) body.angle = (body.angle || 0) + k.dt() * 60;

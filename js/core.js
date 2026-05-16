@@ -244,6 +244,7 @@ function defaultState() {
     scene: "lobby",
     playerPos: { x: 120, y: 480 },
     arriveFromElevator: false,
+    elevatorReturnTo: "lobby",
     act: 1,
     quests: {},
     inventory: {},
@@ -397,6 +398,7 @@ function sceneTitle(scene) {
 
 const ELEVATOR_SPAWNS = {
   lobby: { x: 760, y: 165, face: "down" },
+  interview: { x: 840, y: 500, face: "left" },
   firstday7: { x: 840, y: 500, face: "left" },
   floor2_tour: { x: 840, y: 500, face: "left" },
   floor3_tour: { x: 840, y: 500, face: "left" },

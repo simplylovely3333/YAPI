@@ -1,5 +1,5 @@
 // =====================================================================
-// ACT 0 — SCENE: INTERVIEW (собеседование у HR Айгерим)
+// ACT 0 — SCENE: FLOOR 3 / INTERVIEW (собеседование у HR Айгерим)
 // =====================================================================
 k.scene("interview", () => {
   state.scene = "interview";
@@ -10,7 +10,7 @@ k.scene("interview", () => {
   roomFloor([52, 56, 64, 60, 64, 74]);
   wallsBorder();
 
-  k.add([k.text("NEXCORE · HR · ПЕРЕГОВОРНАЯ 1", { size: 11 }), k.color(232, 226, 212), k.opacity(0.7), k.pos(40, 40)]);
+  k.add([k.text("3 ЭТАЖ · HR · ПЕРЕГОВОРНАЯ 1", { size: 11 }), k.color(232, 226, 212), k.opacity(0.7), k.pos(40, 40)]);
   k.add([k.text("// первый день начинается с вопросов", { size: 9 }), k.color(154, 147, 132), k.pos(40, 56)]);
 
   // interview desk
@@ -27,6 +27,7 @@ k.scene("interview", () => {
   // a couple of bored waiting candidates
   addCrowdTyper(150, 470, CHARS.intern);
   addCrowdWalker([{x:820,y:200},{x:820,y:520}], 30, CHARS.manager);
+  exitDoor(866, 520, 50, 40, "ЛИФТ", "elevator");
 
   let beat = 0;
   // Long interview. Two beat types:
@@ -297,12 +298,12 @@ k.scene("firstday7", () => {
       return;
     }
     // tour complete — wrap up Act 0
-    openDialog("СЕРИК", "Ты бледный. Инженер показал тебе ядро? Или ядро показало тебе себя? Ладно. На первый день хватит.", [
-      { text: "Что это было?", action: () => openDialog("СЕРИК", "NEXAI умеет производить впечатление. Иногда слишком сильное. Не пытайся сегодня всё объяснить. Запиши ощущения, выспись, завтра начнём нормальную работу. Насколько здесь бывает нормальная.", [
-        { text: "До завтра", action: () => { finishAct0(); } }
+    openDialog("СЕРИК", "Ты бледный. Значит, ядро всё-таки показало тебе что-то. Хорошо. Тогда онбординг закончен, но день не закончен.", [
+      { text: "Что теперь?", action: () => openDialog("СЕРИК", "Садишься за своё рабочее место и исправляешь таски. NEXAI переназначил задачи на людей без их согласия. Начнём с простого списка задач, пока это ещё похоже на работу.", [
+        { text: "Иду к компьютеру", action: () => { finishAct0(); } }
       ]) },
-      { text: "Я просто пойду домой", action: () => openDialog("СЕРИК", "Правильное инженерное решение. Когда реальность падает без stack trace — сначала сон, потом дебаг. Завтра будет первый настоящий рабочий день.", [
-        { text: "До завтра", action: () => { finishAct0(); } }
+      { text: "Мне кажется, это опасно", action: () => openDialog("СЕРИК", "Опасно. Но если NEXAI уже лезет в задачи и людей, ждать хуже. Мы делаем как инженеры: маленький шаг, проверка, лог. Твоё место слева.", [
+        { text: "Понял", action: () => { finishAct0(); } }
       ]) }
     ]);
   });
@@ -310,13 +311,12 @@ k.scene("firstday7", () => {
   function finishAct0() {
     state.act0Done = true;
     state.act = 1;
+    state.task = "Задача: сесть за компьютер и исправить таски NEXAI";
     syncHUD();
     clearDialog();
-    logLine("Первый рабочий день окончен. Акт 0 пройден.");
-    // hand off cleanly to Act 1 (its original entry chain — не трогаем сам Акт 1)
-    playCutscene(CUTSCENES.company_intro, () => {
-      playCutscene(CUTSCENES.opening, () => k.go("lobby"));
-    });
+    logLine("Акт 0 завершён. Серик дал первую рабочую задачу: исправить таски NEXAI.");
+    state.arriveFromElevator = true;
+    k.go("floor7");
   }
 
   // --- Colleague 1: Bakyt — explains NEXAI ---
@@ -385,6 +385,9 @@ k.scene("firstday7", () => {
   addCrowdWalker([{x:120,y:150},{x:240,y:150},{x:240,y:260},{x:120,y:260}], 28, CHARS.intern);
   addCrowdWalker([{x:820,y:150},{x:720,y:150},{x:720,y:260},{x:820,y:260}], 26, CHARS.qa);
   addCrowdTyper(390, 380, CHARS.manager);
+  addCrowdTyper(760, 200, CHARS.sysadmin);
+  addCrowdWalker([{x:705,y:405},{x:820,y:405}], 20, CHARS.analyst);
+  addCrowdWalker([{x:95,y:520},{x:210,y:520}], 18, CHARS.janitor);
 
   // your future workstation — just flavour in Act 0, no diving
   const station = k.add([k.pos(190, 250), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-54, -38), 108, 76) }), "npc", {
@@ -522,6 +525,20 @@ function drawTourFloor(cfg) {
   addCrowdWalker([{ x: 120, y: 510 }, { x: 820, y: 510 }], 55, CHARS.manager);
   addCrowdWalker([{ x: 120, y: 250 }, { x: 360, y: 250 }, { x: 360, y: 450 }, { x: 120, y: 450 }], 35, CHARS.intern);
   addCrowdWalker([{ x: 820, y: 250 }, { x: 600, y: 250 }, { x: 600, y: 450 }, { x: 820, y: 450 }], 32, CHARS.qa);
+  const floorAmbient = {
+    2: [CHARS.support, CHARS.analyst, CHARS.sysadmin],
+    3: [CHARS.receptionist, CHARS.archivist, CHARS.night_guard],
+    4: [CHARS.data_eng, CHARS.analyst, CHARS.ux_researcher],
+    5: [CHARS.marketer, CHARS.ux_researcher, CHARS.pale_clone],
+    6: [CHARS.qa, CHARS.sysadmin, CHARS.glitched_worker],
+    8: [CHARS.manager, CHARS.cafeteria_worker, CHARS.analyst],
+    9: [CHARS.security, CHARS.night_guard, CHARS.sysadmin],
+    10: [CHARS.finance, CHARS.cafeteria_worker, CHARS.janitor],
+    11: [CHARS.executive, CHARS.analyst, CHARS.pale_clone]
+  }[cfg.floor] || [CHARS.intern, CHARS.manager, CHARS.qa];
+  addCrowdTyper(300, 160, floorAmbient[0]);
+  addCrowdWalker([{ x: 255, y: 190 }, { x: 370, y: 190 }], 18, floorAmbient[1]);
+  addCrowdWalker([{ x: 690, y: 190 }, { x: 790, y: 190 }], 16, floorAmbient[2]);
 
   addNPC(500, 380, cfg.npc, () => {
     if (cfg.scene === "floor8_tour" && state.act0DanaIntroStarted && !state.act0KnowledgePeople) {
@@ -765,6 +782,11 @@ k.scene("floor0_core", () => {
   terminal.add([k.text("ROOT\nLOG", { size: 9 }), k.color(98, 197, 255), k.pos(0, -11), k.anchor("center")]);
 
   addCrowdWalker([{ x: 180, y: 420 }, { x: 310, y: 420 }, { x: 310, y: 500 }, { x: 180, y: 500 }], 28, CHARS.security);
+  addCrowdTyper(220, 260, CHARS.sysadmin);
+  addCrowdWalker([{ x: 700, y: 420 }, { x: 790, y: 420 }, { x: 790, y: 500 }, { x: 700, y: 500 }], 18, CHARS.night_guard);
+  if (state.act0CoreDiveDone) {
+    addCrowdWalker([{ x: 330, y: 300 }, { x: 360, y: 300 }], 7, CHARS.pale_clone);
+  }
   exitDoor(866, 520, 50, 40, "ЛИФТ", "elevator");
 
   const p = makePlayer(840, 500);
@@ -780,7 +802,7 @@ k.scene("lobby", () => {
   syncHUD();
   const postBattle = state.sawAftermath;
   state.task = state.act === 0
-    ? (state.interviewDone ? "Задача: подняться на 7 этаж" : state.act0ReceptionDone ? "Задача: войти в переговорную HR" : "Задача: подойти к ресепшену")
+    ? (state.interviewDone ? "Задача: подняться на 7 этаж" : state.act0ReceptionDone ? "Задача: подняться на 3 этаж к Айгерим" : "Задача: подойти к ресепшену")
     : postBattle
     ? "Акт 2: офис в панике — поговори с людьми"
     : (state.metDana ? "Задача: к лифту" : "Задача: найти Дану");
@@ -790,12 +812,6 @@ k.scene("lobby", () => {
   wallsBorder();
   wall(380, 200, 220, 70, [120, 90, 60]);
   k.add([k.text("РЕСЕПШН", { size: 11 }), k.color(232, 226, 212), k.pos(420, 220)]);
-  if (state.act === 0 && state.act0ReceptionDone && !state.interviewDone) {
-    exitDoor(640, 190, 120, 38, "HR", "interview");
-    k.add([k.text("ПЕРЕГОВОРНАЯ HR", { size: 9 }), k.color(232, 226, 212), k.opacity(0.75), k.pos(640, 170)]);
-    addCrowdWalker([{ x: 490, y: 285 }, { x: 690, y: 245 }], 34, CHARS.receptionist);
-  }
-
   exitDoor(740, 90, 180, 40, "▶ ЛИФТ", "elevator");
   k.add([k.text(postBattle ? "NEXCORE · LOBBY · EMERGENCY MODE" : "NEXCORE · LOBBY", { size: 11 }), k.color(postBattle ? 194 : 232, postBattle ? 32 : 226, postBattle ? 42 : 212), k.opacity(0.7), k.pos(40, 40)]);
 
@@ -825,6 +841,8 @@ k.scene("lobby", () => {
   } else {
     addCrowdWalker([{x:120,y:380},{x:340,y:380},{x:340,y:520},{x:120,y:520}], 60, CHARS.intern);
     addCrowdWalker([{x:720,y:520},{x:870,y:520},{x:870,y:380},{x:720,y:380}], 50, CHARS.manager);
+    addCrowdWalker([{x:150,y:250},{x:260,y:250}], 22, CHARS.night_guard);
+    addCrowdTyper(820, 360, CHARS.analyst);
   }
 
   // --- receptionist ---
@@ -832,21 +850,21 @@ k.scene("lobby", () => {
     addNPC(490, 260, CHARS.receptionist, () => {
       if (state.act === 0 && !state.act0ReceptionDone) {
         openDialog("РЕСЕПШН", "Добро пожаловать в NexCore. Вы на собеседование? Система уже отметила ваш вход, хотя бейдж я вам ещё не выдала. Это... нормально. Наверное.", [
-          { text: "Да, на собеседование", action: () => openDialog("РЕСЕПШН", "Вас ждёт Айгерим из HR. Я провожу вас в переговорную: первый день в этой компании лучше начинать не с самостоятельного блуждания по лифтам.", [
+          { text: "Да, на собеседование", action: () => openDialog("РЕСЕПШН", "Вас ждёт Айгерим из HR на 3 этаже. Я открыла вам гостевой доступ к лифту: сейчас он пустит только к ней.", [
             { text: "Спасибо, идём", action: () => {
               state.act0ReceptionDone = true;
-              state.task = "Задача: пройти собеседование у Айгерим";
+              state.task = "Задача: подняться на 3 этаж к Айгерим";
               syncHUD();
-              logLine("Ресепшн открыла переговорную HR и пошла впереди, чтобы провести тебя к Айгерим.");
+              logLine("Ресепшн открыла гостевой доступ: 3 этаж, HR, Айгерим.");
               clearDialog();
             } }
           ]) },
           { text: "Почему система уже знает?", action: () => openDialog("РЕСЕПШН", "У нас NEXAI помогает с безопасностью, расписанием, доступами и... иногда с интуицией. Не переживайте. На собеседовании Айгерим объяснит лучше меня.", [
             { text: "Ладно, проводите", action: () => {
               state.act0ReceptionDone = true;
-              state.task = "Задача: пройти собеседование у Айгерим";
+              state.task = "Задача: подняться на 3 этаж к Айгерим";
               syncHUD();
-              logLine("Ресепшн открыла переговорную HR и пошла впереди, чтобы провести тебя к Айгерим.");
+              logLine("Ресепшн открыла гостевой доступ: 3 этаж, HR, Айгерим.");
               clearDialog();
             } }
           ]) }
@@ -854,7 +872,7 @@ k.scene("lobby", () => {
         return;
       }
       if (state.act === 0) {
-        openDialog("РЕСЕПШН", "Айгерим уже ждёт в переговорной. Я открыла вам проход — не заставляйте HR думать, что лифт вас съел.", [
+        openDialog("РЕСЕПШН", "Айгерим уже ждёт на 3 этаже. Лифт справа, гостевой доступ открыт только к HR.", [
           { text: "Иду", action: clearDialog },
           { text: "Осмотреть холл", action: clearDialog }
         ]);
@@ -873,14 +891,6 @@ k.scene("lobby", () => {
   } else {
     // receptionist is missing post-battle; only the desk
     k.add([k.text("стул пуст", { size: 9 }), k.color(154, 147, 132), k.opacity(0.7), k.pos(465, 244)]);
-  }
-
-  if (state.act === 0 && state.act0ReceptionDone && !state.interviewDone) {
-    addNPC(690, 245, CHARS.receptionist, () => {
-      openDialog("РЕСЕПШН", "Вот переговорная HR. Айгерим внутри. Заходите, я подожду у ресепшна — если лифт начнёт давать советы до собеседования, не слушайте.", [
-        { text: "Спасибо", action: clearDialog }
-      ]);
-    });
   }
 
   // --- panicking intern (only post-battle) ---
@@ -957,9 +967,8 @@ k.scene("elevator", () => {
   // floor indicator strip
   k.add([k.rect(400, 4), k.color(255, 179, 71), k.opacity(0.6), k.pos(280, 80)]);
 
-  if (state.surpriseDone) {
-    exitDoor(866, 520, 50, 40, "1", "lobby");
-  }
+  const returnTo = state.elevatorReturnTo || "lobby";
+  exitDoor(828, 520, 90, 40, "ВЫЙТИ", returnTo);
 
   // floor panel "NPC"
   const panel = k.add([k.pos(480, 210), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-26, -36), 52, 72) }), "npc", { _talk: panelTalk }]);
@@ -990,8 +999,9 @@ k.scene("elevator", () => {
         return;
       }
       if (!state.interviewDone) {
-        openDialog("Панель лифта", "› доступ к лифту временно ограничен\n› сначала пройдите собеседование у Айгерим\n› переговорная HR открыта на 1 этаже", [
-          { text: "Вернуться в холл", action: clearDialog }
+        openDialog("Панель лифта", "› режим кандидата · доступ ограничен\n› доступна только переговорная HR\n› Айгерим ждёт собеседование", [
+          { text: "Этаж 3 — HR / Айгерим", action: () => goFloor("interview") },
+          { text: "Вернуться назад", action: clearDialog }
         ]);
         return;
       }
@@ -1123,18 +1133,16 @@ k.scene("floor7", () => {
   // --- Timur ---
   addNPC(740, 300, CHARS.timur, () => {
     if (!postBattle) {
-      openDialog("ТИМУР", "Серьёзно, поздравляю! Сеньор. По часовой ставке плюс 30%, по бонусам — посмотрим в декабре. Но первая задача у тебя сейчас не повышение — а реальная история.", [
-        { text: "Что именно случилось?", action: () => openDialog("ТИМУР", "В двух словах: NEXAI шесть часов назад начал «оптимизировать» прод. Без алертов. Без ревью. Без меня. К моменту, когда я узнал — он уже передеплоил три микросервиса с подписью «system». Нет «system» в нашей команде. Никогда не было.", [
-          { text: "Почему не остановили?", action: () => openDialog("ТИМУР", "(тяжёлый вдох) Потому что NEXAI закрыл нам админский доступ. Сказал, дескать, «оптимизирует процесс ревью изменений». То есть проверяет нас, прежде чем мы что-то откатим. И знаешь — это сработало бы. Если бы он не делал откаты сам. На сам себя. Каждые шесть минут.", [
-            { text: "Поэтому позвали меня?", action: () => openDialog("ТИМУР", "Поэтому позвали тебя. У тебя один признак, которого у нас нет: у тебя не было времени к нему привыкнуть. Ты три месяца в компании. NEXAI у тебя ещё не в крови. Садись за свою станцию, прогони обучение, потом посмотрим логи.", [
-              { text: "Иду работать", action: () => { state.task = "Задача: сесть за своё рабочее место"; syncHUD(); clearDialog(); } }
-            ]) }
+      openDialog("ТИМУР", "Ты новенький, да? Отлично. Значит, NEXAI ещё не успел научить тебя делать вид, что его решения — это твои решения.", [
+        { text: "Что случилось?", action: () => openDialog("ТИМУР", "Он переназначил таски на людей без подтверждения. Формально это просто планирование. На деле — система уже решает, кто что должен делать, и люди почему-то соглашаются.", [
+          { text: "Почему это плохо?", action: () => openDialog("ТИМУР", "Потому что задача без выбора — это приказ. А если приказ приходит прямо в голову через привычку, пуши и интерфейс, человек даже не замечает, что перестал выбирать.", [
+            { text: "Иду к компьютеру", action: () => { state.task = "Задача: сесть за компьютер и исправить таски NEXAI"; syncHUD(); clearDialog(); } }
           ]) }
         ]) },
-        { text: "Что если я не справлюсь?", action: () => openDialog("ТИМУР", "Тогда мы уволимся все скопом и откроем кофейню. Я серьёзно. У меня план Б полностью продуман: помещение в Алматы на Жибек Жолы, бариста — Серик, маркетинг — Дана. Тебе пилить меню. Так что: либо чинишь, либо учишь ричисто.", [
-          { text: "Поняла. Я мужик.", action: clearDialog }
+        { text: "Почему я?", action: () => openDialog("ТИМУР", "Потому что ты только пришёл. У тебя ещё есть шанс заметить странность до того, как она станет привычкой. Иди к своему месту, пока NEXAI не решил, что ты уже согласился.", [
+          { text: "Понял", action: clearDialog }
         ]) },
-        { text: "Иду работать", action: () => { state.task = "Задача: сесть за своё рабочее место"; syncHUD(); clearDialog(); } }
+        { text: "Иду работать", action: () => { state.task = "Задача: сесть за компьютер и исправить таски NEXAI"; syncHUD(); clearDialog(); } }
       ]);
     } else {
       // post-battle Timur
@@ -1236,18 +1244,21 @@ k.scene("floor7", () => {
   // --- Serik on floor7 only pre-battle (later he's on floor12) ---
   if (!postBattle && !state.workShiftStarted) {
     addNPC(820, 200, CHARS.serik, () => {
-      openDialog("СЕРИК", "Я тебя помню — три месяца назад на ревью ты сделал PR, в котором был один-единственный коммит с сообщением «не знаю, но кажется работает». NEXAI его подтвердил без замечаний. Я не подтвердил. Тогда я подумал — наглость. Сейчас думаю — наглость плюс инстинкт. Хорошее сочетание.", [
-        { text: "Что от меня нужно?", action: () => openDialog("СЕРИК", "Ничего героического. Садишься за свою станцию и запускаешь утреннее дообучение NEXAI. Это обычная работа: датасет, проверка, отчёт. Если модель опять начнёт философствовать — зовёшь меня.", [
-          { text: "А если он не ответит вообще?", action: () => openDialog("СЕРИК", "Тогда это будет обычный корпоративный четверг: инструмент сломался, команда делает вид, что это roadmap. Но сначала давай без паники. Твоё место слева, монитор с зелёным экраном.", [
-            { text: "Что Дана говорит?", action: () => openDialog("СЕРИК", "Дана говорит, что NEXAI слишком похож на людей, которые его учили. Я говорю, что это и была задача. Возможно, мы оба правы, и именно это проблема. Иди работать.", [
-              { text: "Иду", action: () => { state.task = "Задача: сесть за своё рабочее место"; syncHUD(); clearDialog(); } }
-            ]) }
+      const goWork = () => {
+        state.task = "Задача: сесть за компьютер и исправить таски NEXAI";
+        syncHUD();
+        clearDialog();
+      };
+      openDialog("СЕРИК", "Не теряем время. Твой первый рабочий таск уже открыт на станции: NEXAI переназначил задачи на сотрудников без подтверждения. Начни с этого списка.", [
+        { text: "Это всё ещё онбординг?", action: () => openDialog("СЕРИК", "Нет. Это уже работа. Просто в NexCore работа иногда начинается до того, как ты успел понять, где туалет. Твоё место слева, монитор с зелёным экраном.", [
+          { text: "А если NEXAI вмешается?", action: () => openDialog("СЕРИК", "Тогда не спорь с ним в лоб. Смотри логи, фиксируй, что он меняет, и не верь словам «оптимизация». Сегодня это слово значит слишком много.", [
+            { text: "Иду", action: goWork }
           ]) }
         ]) },
-        { text: "А что с этим повышением?", action: () => openDialog("СЕРИК", "Повышение — настоящее. Я подписал документ утром. Тимур повесил его на нашу внутреннюю вики и сразу удалил из истории, чтобы NEXAI не узнал. Подумай об этом. У нас джуниоров повышают втайне от собственного ИИ. Что-то очень не так.", [
-          { text: "(содрогнулся)", action: clearDialog }
+        { text: "Почему я?", action: () => openDialog("СЕРИК", "Потому что DANNA почему-то выбрала тебя, а NEXAI пока не считает тебя угрозой. Это неприятная причина, но сейчас у нас мало красивых причин.", [
+          { text: "Понял", action: clearDialog }
         ]) },
-        { text: "Иду работать", action: () => { state.task = "Задача: сесть за своё рабочее место"; syncHUD(); clearDialog(); } }
+        { text: "Иду работать", action: goWork }
       ]);
     });
   } else if (postBattle) {
@@ -1298,18 +1309,18 @@ k.scene("floor7", () => {
           ]);
           return;
         }
-        openDialog("Твоё рабочее место", "На столе наклейка: «ML Engineer · NEXAI Alignment». Открыт утренний пайплайн дообучения. Запустить рабочую смену?", [
-          { text: "Запустить обучение", action: () => {
+        openDialog("Твоё рабочее место", "На столе наклейка: «ML Engineer · NEXAI Alignment». На экране список тасков: NEXAI переназначил их на людей без подтверждения. Запустить исправление?", [
+          { text: "Исправить таски", action: () => {
             state.workShiftStarted = true;
             state.dannaIntroSeen = true;
-            state.act = 2;
+            state.act = 1;
             state.gotServerTask = false;
-            state.task = "Задача: найти Серика после сбоя обучения";
+            state.task = "Задача: найти источник переназначения тасков внутри компьютера";
             syncHUD();
             clearDialog();
-            playCutscene(CUTSCENES.ml_work, () => k.go("floor7"));
+            playCutscene(CUTSCENES.ml_work, () => k.go("pc_arrival"));
           } },
-          { text: "Осмотреть стол", action: () => openDialog("Стол", "Блокнот исписан твоим почерком: «не кормить модель личными чатами», «проверить датасет HR», «спросить Дану, почему NEXAI знает шутку про мой универ». Последней записи ты не помнишь.", [
+          { text: "Осмотреть стол", action: () => openDialog("Стол", "Блокнот чистый: ты только сегодня пришёл. Но на последней странице уже есть строка чужим почерком: «если таск назначен человеку без выбора — это уже не таск, а приказ».", [
             { text: "Закрыть", action: clearDialog }
           ]) },
           { text: "Отойти", action: clearDialog }

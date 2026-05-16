@@ -67,19 +67,24 @@ grep -q 'floor11_tour' js/scenes-act1.js || fail "Act 0 elevator must include fl
 grep -q 'floor2_tour' js/scenes-act1.js || fail "Act 0 elevator must include floor 2 tour"
 grep -q 'Support' js/characters.js || fail "support sprite must exist"
 grep -q 'Security' js/characters.js || fail "security sprite must exist"
+grep -q 'glitched_worker' js/characters.js || fail "glitched office sprite must exist"
+grep -q 'sysadmin' js/characters.js || fail "sysadmin sprite must exist"
 pass "act 0 elevator floor tour hooks exist"
 
 grep -q 'act0ReceptionDone' js/core.js || fail "Act 0 receptionist escort state must exist"
 grep -q 'k.go("lobby")' js/cutscenes.js || fail "new game must start at reception lobby"
 grep -q 'ELEVATOR_SPAWNS' js/core.js || fail "elevator spawn map must exist"
 grep -q 'arriveFromElevator' js/world.js || fail "player must spawn near elevator after elevator travel"
+grep -q 'elevatorReturnTo' js/core.js || fail "elevator return target must exist"
+grep -q 'ex._to === "elevator"' js/world.js || fail "entering elevator must remember return scene"
+grep -q 'ВЫЙТИ' js/scenes-act1.js || fail "elevator must have an exit door"
 grep -q 'dialogReadyAt' js/dialog.js || fail "dialog debounce must exist"
 pass "reception, elevator spawn, and dialog debounce hooks exist"
 
 grep -q 'act0DanaTask' js/core.js || fail "Act 0 Dana onboarding state must exist"
 grep -q 'function act0DanaTalk' js/scenes-act1.js || fail "Act 0 Dana intro must exist"
 grep -q 'function checkAct0DanaKnowledge' js/scenes-act1.js || fail "Act 0 NEXAI knowledge search must exist"
-grep -q 'ПЕРЕГОВОРНАЯ HR' js/scenes-act1.js || fail "reception escort must use walkable HR meeting room"
+grep -q 'Этаж 3 — HR / Айгерим' js/scenes-act1.js || fail "reception flow must unlock floor 3 HR interview"
 pass "act 0 Dana and walkable reception flow hooks exist"
 
 grep -q 'act0CoreTask' js/core.js || fail "Act 0 core onboarding state must exist"
@@ -87,6 +92,11 @@ grep -q 'k.scene("floor0_core"' js/scenes-act1.js || fail "Act 0 floor 0 core sc
 grep -q 'act0_first_dive' js/cutscenes.js || fail "Act 0 first DANNA dive cutscene must exist"
 grep -q 'core_engineer' js/characters.js || fail "core engineer sprite must exist"
 pass "act 0 core and first DANNA dive hooks exist"
+
+grep -q 'сесть за компьютер и исправить таски NEXAI' js/scenes-act1.js || fail "Act 1 must start same-day with task repair"
+grep -q 'Нужно разрушить его цепочку контроля' js/cutscenes.js || fail "DANNA mission briefing must explain how to stop NEXAI"
+grep -q 'DANNA · local' js/scenes-act2.js || fail "inside-computer intro must use DANNA, not NEXAI echo"
+pass "same-day Act 1 computer mission hooks exist"
 
 if command -v osascript >/dev/null 2>&1; then
   for file in js/*.js; do

@@ -111,6 +111,52 @@ const CHARS = {
     facialHair: "stubble", accessory: "glasses",
     shirt: "#202830", pants: "#10141c", accent: "#62c5ff",
     name: "Инженер ядра"
+  },
+  sysadmin: {
+    skin: "#d8b08a", hair: "#0f1014", hairStyle: "headphones",
+    facialHair: "stubble", accessory: "laptop",
+    shirt: "#26384c", pants: "#10141c", accent: "#62c5ff",
+    name: "Sysadmin"
+  },
+  analyst: {
+    skin: "#e8c8a8", hair: "#2a1810", hairStyle: "bun",
+    accessory: "glasses", shirt: "#8fd0a8", pants: "#1f2530",
+    name: "Analyst"
+  },
+  ux_researcher: {
+    skin: "#f0c8a0", hair: "#3a2418", hairStyle: "ponytail",
+    shirt: "#c6a8ff", pants: "#242032", accent: "#ffffff",
+    name: "UX"
+  },
+  janitor: {
+    skin: "#d0a878", hair: "#1a1410", hairStyle: "cap",
+    facialHair: "mustache", shirt: "#5f7f6f", pants: "#1c2420",
+    name: "Техник"
+  },
+  cafeteria_worker: {
+    skin: "#e0b890", hair: "#3a2a1a", hairStyle: "cap",
+    shirt: "#d7c66a", pants: "#2a2630", accent: "#ffffff",
+    name: "Столовая"
+  },
+  archivist: {
+    skin: "#d8b08a", hair: "#d8d8e8", hairStyle: "bun",
+    accessory: "glasses", shirt: "#6f5f8f", pants: "#1a1624",
+    name: "Архивариус"
+  },
+  glitched_worker: {
+    skin: "#e8e2d4", hair: "#050607", hairStyle: "messy",
+    shirt: "#c2202a", pants: "#0e1014", accent: "#62c5ff",
+    name: "Сотрудник?"
+  },
+  pale_clone: {
+    skin: "#d8e8e8", hair: "#0e1014", hairStyle: "short",
+    shirt: "#9aa39a", pants: "#1f1f24", accent: "#c2202a",
+    name: "Копия"
+  },
+  night_guard: {
+    skin: "#d0a878", hair: "#1a1010", hairStyle: "buzz",
+    facialHair: "stubble", shirt: "#141824", pants: "#101014", accent: "#ffb347",
+    name: "Охрана"
   }
 };
 

@@ -111,6 +111,8 @@ function setupPlayerControls(p) {
       const px = p.pos.x, py = p.pos.y;
       if (px > ex.pos.x && px < ex.pos.x + ex.width && py > ex.pos.y - 30 && py < ex.pos.y + ex.height + 30) {
         Aud.elevatorDing();
+        if (ex._to === "elevator") state.elevatorReturnTo = state.scene;
+        if (state.scene === "elevator") state.arriveFromElevator = true;
         state.scene = ex._to;
         k.go(ex._to);
         return;
