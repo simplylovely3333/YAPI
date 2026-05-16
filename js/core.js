@@ -193,6 +193,7 @@ function defaultState() {
     task: "Задача: добраться до офиса",
     fear: 18,
     coffee: 45,
+    hp: 100,
     // Act 0 — onboarding
     interviewDone: false,
     act0ReceptionDone: false,
@@ -218,6 +219,16 @@ function defaultState() {
     surpriseDone: false,
     workShiftStarted: false,
     dannaIntroSeen: false,
+    act1DanaBriefed: false,
+    act1WeaknessFound: false,
+    act1LibraryTask: false,
+    act1ManualFound: false,
+    act1LibraryPuzzleStarted: false,
+    act1LibraryClueShelf: false,
+    act1LibraryClueCatalog: false,
+    act1LibraryClueStamp: false,
+    act1LibraryEscapeStarted: false,
+    act1CounterPatchDone: false,
     aigerimTask: false,
     aigerimLaptopFixed: false,
     danaOfficeInvite: false,
@@ -363,7 +374,7 @@ function sceneTitle(scene) {
   const titles = {
     interview: "собеседование · HR",
     firstday7: "7 этаж · первый день",
-    floor2_tour: "2 этаж · support",
+    floor2_tour: "2 этаж · библиотека",
     floor3_tour: "3 этаж · HR",
     floor4_tour: "4 этаж · data quality",
     floor5_tour: "5 этаж · marketing",
@@ -467,10 +478,11 @@ function createGameHUD() {
 
   addHudBar(650, 14, 190, "ТРЕВОГА", state.fear || 0, [194, 32, 42]);
   addHudBar(650, 34, 190, "КОФЕИН", state.coffee || 0, [255, 179, 71]);
+  addHudBar(650, 54, 190, "HP", state.hp == null ? 100 : state.hp, [168, 255, 101]);
 
   const items = getHudItems();
   const invTitle = items.length ? "ИНВЕНТАРЬ / КВЕСТЫ" : "ИНВЕНТАРЬ: пусто";
-  hud.add([k.text(invTitle, { size: 9 }), k.color(168, 255, 101), k.opacity(0.86), k.pos(650, 53)]);
+  hud.add([k.text(invTitle, { size: 9 }), k.color(168, 255, 101), k.opacity(0.86), k.pos(650, 69)]);
 
   const panel = k.add([k.pos(668, 86), k.fixed(), k.z(980), "game-hud"]);
   panel.add([k.rect(270, 116), k.color(5, 7, 10), k.opacity(0.58), k.outline(1, k.rgb(64, 38, 42)), k.pos(0, 0)]);

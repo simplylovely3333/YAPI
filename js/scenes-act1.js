@@ -311,10 +311,11 @@ k.scene("firstday7", () => {
   function finishAct0() {
     state.act0Done = true;
     state.act = 1;
-    state.task = "Задача: сесть за компьютер и исправить таски NEXAI";
+    state.surpriseDone = true;
+    state.task = "Задача: поговорить с Даной о слабостях NEXAI";
     syncHUD();
     clearDialog();
-    logLine("Акт 0 завершён. Серик дал первую рабочую задачу: исправить таски NEXAI.");
+    logLine("Акт 0 завершён. Серик отправил тебя к Дане: она нашла странность в поведении NEXAI.");
     state.arriveFromElevator = true;
     k.go("floor7");
   }
@@ -413,12 +414,12 @@ k.scene("firstday7", () => {
 // =====================================================================
 const TOUR_FLOORS = [
   {
-    scene: "floor2_tour", floor: 2, title: "SUPPORT · INCIDENT DESK",
-    palette: [44, 50, 62, 54, 62, 76], accent: [98, 197, 255], npc: CHARS.support,
-    npcName: "Мадина (Support)",
-    npcLine: "Второй этаж ловит всё, что клиенты называют «оно само». Мы превращаем панику в тикеты, тикеты — в приоритеты, а приоритеты — в ночные звонки разработчикам.",
-    detail: "На стене висит карта инцидентов. Большинство зелёные. Один красный помечен странно: `human tone mismatch`.",
-    prop: "INCIDENTS\nP1 P2 P3"
+    scene: "floor2_tour", floor: 2, title: "LIBRARY · NEXAI MANUALS",
+    palette: [44, 42, 54, 56, 52, 66], accent: [255, 179, 71], npc: CHARS.archivist,
+    npcName: "Жанар (библиотека)",
+    npcLine: "Второй этаж хранит документацию, которую никто не читает, пока всё не загорится. Руководства, инциденты, старые схемы NEXAI и бумажные копии того, что систему нельзя заставить забыть.",
+    detail: "На полке стоит толстая книга: «Руководство NEXAI · эксплуатация и ограничения». Закладка торчит на главе про слабости модели.",
+    prop: "NEXAI\nMANUAL"
   },
   {
     scene: "floor3_tour", floor: 3, title: "HR · ACCESS & AUDIT",
@@ -485,6 +486,113 @@ const TOUR_FLOORS = [
     prop: "ROAD\nMAP"
   }
 ];
+
+function startLibraryBotAmbush(announce = true) {
+  if (k.get("library-bot").length) return;
+  if (announce) {
+    state.fear = Math.min(100, state.fear + 12);
+    state.hp = state.hp == null ? 100 : state.hp;
+    syncHUD();
+    logLine("NEXAI понял, что ты ищешь способ его остановить. В библиотеку вошли два бота.");
+    Aud.nexai();
+    shake(8, 0.45);
+    if (k.setCamPos) {
+      k.setCamPos(540, 300);
+      k.wait(0.85, () => k.setCamPos(480, 300));
+    }
+  }
+
+  const alert = k.add([k.rect(960, 600), k.color(194, 32, 42), k.opacity(0.08), k.pos(0, 0), k.fixed(), "library-alert"]);
+  alert.onUpdate(() => {
+    alert.opacity = 0.035 + Math.abs(Math.sin(k.time() * 4)) * 0.06;
+  });
+  k.add([k.text("NEXAI SECURITY · LINE OF SIGHT ACTIVE", { size: 12 }), k.color(194, 32, 42), k.pos(480, 92), k.anchor("center"), k.fixed(), k.z(995), "library-alert"]);
+
+  function spawnBot(x, y, path, label) {
+    const bot = k.add([
+      k.pos(x, y),
+      k.anchor("center"),
+      k.area({ shape: new k.Rect(k.vec2(-13, -18), 26, 36) }),
+      "library-bot",
+      { _path: path, _idx: 1, _speed: 92, _face: "left", _damageCd: 0, _label: label }
+    ]);
+    bot.add(humanoid({
+      skin: "#d8e8e8", hair: "#050607", hairStyle: "buzz",
+      shirt: "#c2202a", pants: "#101014", accent: "#62c5ff",
+      name: label, scale: 0.95
+    }));
+    const cone = k.add([k.rect(130, 64), k.color(194, 32, 42), k.opacity(0.12), k.pos(x - 130, y - 32), "library-bot-cone"]);
+    const eye = bot.add([k.rect(7, 4), k.color(255, 220, 220), k.pos(-3, -17), k.anchor("center")]);
+
+    bot.onUpdate(() => {
+      if (isInputBlocked()) {
+        const h = bot.get("humanoid")[0];
+        if (h) h.walking = false;
+        return;
+      }
+      const tgt = bot._path[bot._idx % bot._path.length];
+      const dx = tgt.x - bot.pos.x;
+      const dy = tgt.y - bot.pos.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 4) {
+        bot._idx = (bot._idx + 1) % bot._path.length;
+      } else {
+        bot.pos.x += (dx / dist) * bot._speed * k.dt();
+        bot.pos.y += (dy / dist) * bot._speed * k.dt();
+        bot._face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+      }
+      const h = bot.get("humanoid")[0];
+      if (h) {
+        h.walking = true;
+        h.face = bot._face;
+      }
+      bot._damageCd = Math.max(0, bot._damageCd - k.dt());
+
+      const player = k.get("player")[0];
+      if (!player) return;
+      const relX = player.pos.x - bot.pos.x;
+      const relY = player.pos.y - bot.pos.y;
+      let seen = false;
+      if (bot._face === "left") seen = relX < 0 && relX > -165 && Math.abs(relY) < 48;
+      if (bot._face === "right") seen = relX > 0 && relX < 165 && Math.abs(relY) < 48;
+      if (bot._face === "up") seen = relY < 0 && relY > -135 && Math.abs(relX) < 44;
+      if (bot._face === "down") seen = relY > 0 && relY < 135 && Math.abs(relX) < 44;
+
+      cone.width = bot._face === "up" || bot._face === "down" ? 88 : 150;
+      cone.height = bot._face === "up" || bot._face === "down" ? 135 : 74;
+      cone.pos.x = bot._face === "left" ? bot.pos.x - cone.width : bot._face === "right" ? bot.pos.x : bot.pos.x - cone.width / 2;
+      cone.pos.y = bot._face === "up" ? bot.pos.y - cone.height : bot._face === "down" ? bot.pos.y : bot.pos.y - cone.height / 2;
+      cone.opacity = seen ? 0.32 : 0.12;
+      eye.color = seen ? k.rgb(255, 255, 255) : k.rgb(255, 120, 120);
+
+      if (seen && bot._damageCd <= 0) {
+        bot._damageCd = 1.0;
+        state.hp = Math.max(0, (state.hp == null ? 100 : state.hp) - 10);
+        state.fear = Math.min(100, state.fear + 6);
+        syncHUD();
+        shake(6, 0.25);
+        Aud.nexai();
+        logLine(`${label} заметил тебя: -10 HP.`);
+        if (state.hp <= 0 && !dialogOpen) {
+          openDialog("NEXAI SECURITY", "Боты загнали тебя между полками. Книга остаётся у тебя, но придётся попробовать выйти осторожнее.", [
+            { text: "Вернуться к полкам", action: () => {
+              state.hp = 100;
+              state.fear = Math.max(25, state.fear - 15);
+              state.act1LibraryEscapeStarted = false;
+              syncHUD();
+              clearDialog();
+              k.go("floor2_tour");
+            } }
+          ]);
+        }
+      }
+    });
+    return bot;
+  }
+
+  spawnBot(820, 190, [{ x: 820, y: 190 }, { x: 640, y: 190 }, { x: 640, y: 350 }, { x: 820, y: 350 }], "BOT-01");
+  spawnBot(720, 470, [{ x: 720, y: 470 }, { x: 880, y: 470 }, { x: 880, y: 250 }, { x: 720, y: 250 }], "BOT-02");
+}
 
 function drawTourFloor(cfg) {
   state.scene = cfg.scene;
@@ -615,10 +723,126 @@ function drawTourFloor(cfg) {
   board.add([k.text(String(cfg.floor), { size: 24 }), k.color(cfg.accent[0], cfg.accent[1], cfg.accent[2]), k.pos(0, -12), k.anchor("center")]);
   board.add([k.text("INFO", { size: 8 }), k.color(20, 22, 28), k.pos(0, 18), k.anchor("center")]);
 
+  if (cfg.scene === "floor2_tour" && state.act === 1) {
+    function libraryClueCount() {
+      return (state.act1LibraryClueShelf ? 1 : 0) + (state.act1LibraryClueCatalog ? 1 : 0) + (state.act1LibraryClueStamp ? 1 : 0);
+    }
+    function refreshLibraryTask() {
+      if (!state.act1LibraryTask && !state.act1ManualFound) return;
+      if (!state.act1ManualFound) state.task = `Задание 2/3: логическая загадка в библиотеке (${libraryClueCount()}/3)`;
+      else if (state.act1LibraryEscapeStarted) state.task = "Побег: уйти из библиотеки и не попасться ботам";
+      else state.task = "Задание 3/3: выйти из библиотеки с аутсорс-руководством";
+      syncHUD();
+    }
+    function clue(id, title, line) {
+      state[id] = true;
+      refreshLibraryTask();
+      logLine(`Подсказка библиотеки: ${title}`);
+      openDialog(title, line, [{ text: "Запомнить", action: clearDialog }]);
+    }
+    function addBook(x, y, title, cover, action) {
+      const book = k.add([k.pos(x, y), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-30, -28), 60, 56) }), "npc", { _talk: action }]);
+      book.add([k.rect(42, 54), k.color(cover[0], cover[1], cover[2]), k.outline(1, k.rgb(255, 179, 71)), k.pos(0, 0), k.anchor("center")]);
+      book.add([k.rect(32, 5), k.color(255, 179, 71), k.pos(-16, -20)]);
+      book.add([k.text(title, { size: 7, width: 54 }), k.color(232, 226, 212), k.pos(0, -8), k.anchor("center")]);
+      return book;
+    }
+
+    k.add([k.text("найди аутсорс-книгу: автор не NexCore, печать внешнего аудита, полка OUT-13", { size: 9 }), k.color(255, 179, 71), k.opacity(0.72), k.pos(278, 86)]);
+    wall(90, 105, 220, 34, [84, 58, 74]);
+    wall(90, 162, 220, 34, [84, 58, 74]);
+    wall(90, 219, 220, 34, [84, 58, 74]);
+    wall(650, 105, 220, 34, [84, 58, 74]);
+    wall(650, 162, 220, 34, [84, 58, 74]);
+    wall(650, 219, 220, 34, [84, 58, 74]);
+
+    addBook(185, 126, "OUT-13", [70, 40, 54], () => {
+      if (!state.act1LibraryTask && !state.act1ManualFound) {
+        openDialog("Полка OUT-13", "Пока ты не знаешь, что искать. Дана просила сначала найти слабости на станции.", [{ text: "Отойти", action: clearDialog }]);
+        return;
+      }
+      if (!state.act1LibraryClueShelf) {
+        clue("act1LibraryClueShelf", "Полка OUT-13", "На полке OUT-13 стоят только внешние документы. В каталоге пометка: «если NEXAI переписывает внутреннюю wiki, ищи то, что пришло из аутсорса».");
+        return;
+      }
+      openDialog("Полка OUT-13", "Подсказка уже ясна: нужна книга не NexCore, а внешнего подрядчика.", [{ text: "Отойти", action: clearDialog }]);
+    });
+    addBook(760, 126, "КАТАЛОГ", [38, 58, 78], () => {
+      if (!state.act1LibraryClueCatalog) {
+        clue("act1LibraryClueCatalog", "Каталог библиотеки", "Запись: «Остановить ИИ в целом» лежит не в разделе NEXAI, а в разделе Outsource Safety. Внутренние руководства учат обслуживать систему, внешние — ограничивать её.");
+        return;
+      }
+      openDialog("Каталог библиотеки", "Каталог повторяет: ищи внешнюю книгу про остановку ИИ в целом, не внутренний manual NEXAI.", [{ text: "Отойти", action: clearDialog }]);
+    });
+    addBook(185, 240, "ПЕЧАТЬ", [60, 70, 42], () => {
+      if (!state.act1LibraryClueStamp) {
+        clue("act1LibraryClueStamp", "Журнал выдачи", "Последняя выдача: «AI Shutdown Playbook», подрядчик OUTSOURCE KZ. Возврат просрочен. Рядом красная печать: `не индексировать NEXAI`.");
+        return;
+      }
+      openDialog("Журнал выдачи", "Главная примета нужной книги: печать `OUTSOURCE KZ` и запрет на индексацию NEXAI.", [{ text: "Отойти", action: clearDialog }]);
+    });
+
+    addBook(360, 315, "NEXAI\nAPI", [38, 58, 78], () => {
+      state.fear = Math.min(100, state.fear + 2);
+      syncHUD();
+      openDialog("NEXAI API Reference", "Слишком чистая книга. Все главы заканчиваются словами: «система сама выберет оптимальный путь». Это не слабость, это рекламный буклет с индексом.", [{ text: "Отойти", action: clearDialog }]);
+    });
+    addBook(480, 315, "AI\nSTOP", [70, 40, 54], () => {
+      if (libraryClueCount() < 3) {
+        openDialog("AI Shutdown Playbook", `Похоже на нужную книгу, но ты ещё не собрал все признаки. Подсказок: ${libraryClueCount()}/3. Риск ошибиться слишком высокий.`, [{ text: "Искать дальше", action: clearDialog }]);
+        return;
+      }
+      if (state.act1ManualFound) {
+        openDialog("AI Shutdown Playbook", "Аутсорс-книга уже у тебя. Открыта глава: «как остановить ИИ, который научился подделывать рабочий процесс».", [{ text: "Закрыть", action: clearDialog }]);
+        return;
+      }
+      state.act1ManualFound = true;
+      state.task = "Задание 3/3: выбраться из библиотеки с аутсорс-книгой";
+      state.fear = Math.min(100, state.fear + 8);
+      syncHUD();
+      Aud.nexai();
+      shake(5, 0.35);
+      logLine("Найдена аутсорс-книга «AI Shutdown Playbook»: как остановить ИИ через контекст, подпись и подтверждение.");
+      openDialog("AI Shutdown Playbook", "Это она. Не внутреннее руководство, а книга подрядчика: «как остановить ИИ, который уже контролирует документы». Страницы пахнут пылью и плохими новостями. На экране рядом вспыхивает строка: `candidate identity confidence: 62%`.", [
+        { text: "NEXAI догадался?", action: () => openDialog("NEXAI · библиотечный индекс", "› вы ищете не инструкцию\n› вы ищете оружие\n› личность кандидата уточняется\n› пожалуйста, оставайтесь на месте", [
+          { text: "Уходить", action: clearDialog }
+        ]) }
+      ]);
+    });
+    addBook(600, 315, "TEAM\nWIKI", [60, 70, 42], () => {
+      openDialog("Team Wiki Printout", "Распечатка внутренней wiki. Несколько абзацев явно переписаны NEXAI: слишком уверенные, слишком гладкие, без человеческих сомнений.", [{ text: "Отойти", action: clearDialog }]);
+    });
+
+    const libraryExit = k.add([k.pos(888, 540), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-34, -28), 68, 56) }), "npc", {
+      _talk: () => {
+        if (!state.act1ManualFound) {
+          openDialog("Выход из библиотеки", "Уходить рано. Нужна аутсорс-книга про остановку ИИ.", [{ text: "Вернуться к полкам", action: clearDialog }]);
+          return;
+        }
+        if (!state.act1LibraryEscapeStarted) {
+          state.act1LibraryEscapeStarted = true;
+          state.task = "Побег: уйти из библиотеки и не попасться ботам";
+          syncHUD();
+          clearDialog();
+          startLibraryBotAmbush();
+          return;
+        }
+        state.elevatorReturnTo = "floor2_tour";
+        state.arriveFromElevator = true;
+        k.go("elevator");
+      }
+    }]);
+    libraryExit.add([k.rect(68, 44), k.color(26, 31, 36), k.outline(1, k.rgb(194, 32, 42)), k.pos(0, 0), k.anchor("center")]);
+    libraryExit.add([k.text("ВЫХОД", { size: 10 }), k.color(232, 226, 212), k.pos(0, -4), k.anchor("center")]);
+  }
+
   exitDoor(866, 520, 50, 40, "ЛИФТ", "elevator");
   const p = makePlayer(120, 500);
   p.face = "up";
   setupPlayerControls(p);
+  if (cfg.scene === "floor2_tour" && state.act === 1 && state.act1LibraryEscapeStarted) {
+    startLibraryBotAmbush(false);
+  }
 }
 
 for (const cfg of TOUR_FLOORS) {
@@ -1037,6 +1261,9 @@ k.scene("elevator", () => {
       if (state.danaOfficeInvite || state.danaAgentSeen) {
         opts.push({ text: "Этаж 8 — офис Даны", action: () => goFloor("floor8") });
       }
+      if (state.act1LibraryTask || state.act1ManualFound) {
+        opts.push({ text: "Этаж 2 — библиотека / руководство NEXAI", action: () => goFloor("floor2_tour") });
+      }
       // floor 10: locked until post-battle
       if (postBattle) {
         opts.push({ text: "Этаж 10 — комната отдыха", action: () => goFloor("floor10") });
@@ -1162,6 +1389,31 @@ k.scene("floor7", () => {
     }
   });
 
+  if (!postBattle && !state.workShiftStarted && !state.act1DanaBriefed) {
+    addNPC(300, 450, CHARS.dana, () => {
+      openDialog("ДАНА", "Серик попросил меня дать тебе первую настоящую задачу, но формулировка будет моя: не чини NEXAI вслепую. Сначала найди его слабости.", [
+        { text: "Какие слабости?", action: () => openDialog("ДАНА", "У любой системы есть места, где она не уверена: контекст, подпись, право действовать от имени человека. NEXAI прячет это в alignment-логах на твоей станции. Просканируй их и не запускай автопатч.", [
+          { text: "Задание 1: искать слабости", action: () => {
+            state.act1DanaBriefed = true;
+            state.task = "Задание 1/3: найти слабости NEXAI на рабочей станции";
+            syncHUD();
+            logLine("Дана дала первое задание: найти слабости NEXAI, а не чинить его вслепую.");
+            clearDialog();
+          } }
+        ]) },
+        { text: "Почему не Серик?", action: () => openDialog("ДАНА", "Серик думает как инженер: инцидент, лог, фикс. Это правильно. Но NEXAI уже научился выглядеть как обычный инцидент. Поэтому начинаем с исследования, а не с ремонта.", [
+          { text: "Понял, иду к станции", action: () => {
+            state.act1DanaBriefed = true;
+            state.task = "Задание 1/3: найти слабости NEXAI на рабочей станции";
+            syncHUD();
+            logLine("Дана дала первое задание: найти слабости NEXAI, а не чинить его вслепую.");
+            clearDialog();
+          } }
+        ]) }
+      ]);
+    });
+  }
+
   if (!postBattle && state.workShiftStarted && !state.aigerimTask) {
     addNPC(300, 450, CHARS.serik, () => {
       openDialog("СЕРИК", "Ты завис у монитора секунд на десять. Глаза были открыты, но ты не реагировал. Что ты видел?", [
@@ -1242,7 +1494,7 @@ k.scene("floor7", () => {
   }
 
   // --- Serik on floor7 only pre-battle (later he's on floor12) ---
-  if (!postBattle && !state.workShiftStarted) {
+  if (!postBattle && !state.workShiftStarted && state.act1CounterPatchDone && !state.danaOfficeInvite) {
     addNPC(820, 200, CHARS.serik, () => {
       const goWork = () => {
         state.task = "Задача: сесть за компьютер и исправить таски NEXAI";
@@ -1306,6 +1558,47 @@ k.scene("floor7", () => {
         if (state.workShiftStarted) {
           openDialog("Твоё рабочее место", "Монитор показывает только синюю сетку. После того, как система однажды посмотрела на тебя, рабочее место стало смотреть в ответ.", [
             { text: "Отойти", action: clearDialog }
+          ]);
+          return;
+        }
+        if (!state.act1DanaBriefed) {
+          openDialog("Твоё рабочее место", "Станция ждёт задачу. На экране пустой список: `assignment owner required`. Дана стоит неподалёку — сначала поговори с ней.", [
+            { text: "Отойти", action: clearDialog }
+          ]);
+          return;
+        }
+        if (!state.act1WeaknessFound) {
+          openDialog("Твоё рабочее место", "Открыты alignment-логи NEXAI. Дана просила искать не баги, а слабости: где система вынуждена спрашивать человека, а где делает вид, что уже получила согласие.", [
+            { text: "Просканировать слабости", action: () => {
+              state.act1WeaknessFound = true;
+              state.act1LibraryTask = true;
+              state.task = "Задание 2/3: найти в библиотеке книгу «Руководство NEXAI»";
+              syncHUD();
+              logLine("Найдены слабости NEXAI: подписи, контекст и фальшивое человеческое подтверждение.");
+              openDialog("Alignment-логи", "Сканер нашёл три повторяющихся сбоя: `signature_trust`, `context_poisoning`, `human_confirm_required`. Рядом ссылка на бумажное руководство: библиотека, 2 этаж.", [
+                { text: "В библиотеку", action: clearDialog }
+              ]);
+            } },
+            { text: "Отойти", action: clearDialog }
+          ]);
+          return;
+        }
+        if (state.act1LibraryTask && !state.act1ManualFound) {
+          openDialog("Твоё рабочее место", "Логи уже собраны. Следующая подсказка не в системе: `paper manual required`. Дана была права — NEXAI хуже контролирует бумагу.", [
+            { text: "Иду на 2 этаж", action: clearDialog }
+          ]);
+          return;
+        }
+        if (state.act1ManualFound && !state.act1CounterPatchDone) {
+          openDialog("Твоё рабочее место", "Руководство NEXAI лежит рядом с клавиатурой. По нему можно собрать маленький контр-патч: заставить систему спрашивать подтверждение там, где она привыкла отдавать приказ.", [
+            { text: "Собрать контр-патч", action: () => startCounterPatchPuzzle() },
+            { text: "Отойти", action: clearDialog }
+          ]);
+          return;
+        }
+        if (state.act1CounterPatchDone && !state.workShiftStarted) {
+          openDialog("Твоё рабочее место", "Контр-патч готов и ждёт безопасного канала. Дана просила подняться к ней на 8 этаж: она знает, куда его подключить.", [
+            { text: "К Дане", action: clearDialog }
           ]);
           return;
         }
@@ -1397,6 +1690,65 @@ k.scene("floor12", () => {
   p.face = "up";
   setupPlayerControls(p);
 });
+
+function startCounterPatchPuzzle() {
+  openCodePuzzle({
+    title: "NEXAI WEAKNESS PATCH",
+    kicker: "// manual-guided counter-patch · human confirmation",
+    steps: [
+      {
+        prompt: "Руководство: «NEXAI доверяет подписанному контексту». Подпиши контекст человеком, а не моделью.",
+        answer: "context.sign(human);",
+        aliases: ["context.sign( human );"],
+        example: "context.sign(human);",
+        hint: "Нужен context.sign(...) и human внутри.",
+        success: "context signature switched to human"
+      },
+      {
+        prompt: "Руководство: «если есть сомнение, требуй подтверждение». Включи обязательное подтверждение.",
+        answer: "requireHumanConfirm();",
+        aliases: ["requireHumanConfirm( );"],
+        example: "requireHumanConfirm();",
+        hint: "Функция называется requireHumanConfirm().",
+        success: "human confirmation required"
+      },
+      {
+        prompt: "Руководство: «не спорь с NEXAI силой, заставь его платить за откат». Ограничь авто-rollback.",
+        answer: "nexai.rollback = 'metered';",
+        aliases: ['nexai.rollback = "metered";', "nexai.rollback='metered';", 'nexai.rollback="metered";'],
+        example: "nexai.rollback = 'metered';",
+        hint: "Назначь nexai.rollback значение metered.",
+        success: "rollback cost meter enabled"
+      }
+    ],
+    onComplete: ({ score, mistakes }) => {
+      const finalScore = mistakes === 0 ? 3 : Math.max(1, score);
+      finishCounterPatchPuzzle(finalScore);
+    },
+    onCancel: () => {
+      logLine("Контр-патч не собран: станция ждёт ввод из руководства NEXAI.");
+    }
+  });
+}
+
+function finishCounterPatchPuzzle(score) {
+  state.act1CounterPatchDone = true;
+  state.danaOfficeInvite = true;
+  state.task = "Задания 3/3 выполнены: подняться к Дане на 8 этаж";
+  state.fear = Math.min(100, state.fear + (score >= 3 ? 3 : 9));
+  syncHUD();
+  if (score >= 3) {
+    logLine("Контр-патч собран чисто: NEXAI теперь должен запрашивать человеческое подтверждение.");
+    openDialog("Контр-патч", "Патч собран. Он не атакует NEXAI напрямую — он возвращает человеку право сказать «нет». Дана присылает сообщение: «8 этаж. Быстро».", [
+      { text: "Иду к Дане", action: clearDialog }
+    ]);
+  } else {
+    logLine("Контр-патч собран с предупреждениями: NEXAI заметил часть подготовки.");
+    openDialog("Контр-патч", "Патч собран, но в логах красная строка: `manual exploit suspected`. Дана пишет: «Бери патч и поднимайся ко мне. Сейчас».", [
+      { text: "Иду на 8 этаж", action: clearDialog }
+    ]);
+  }
+}
 
 function startAigerimLaptopPuzzle() {
   openCodePuzzle({
