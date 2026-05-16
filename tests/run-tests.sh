@@ -98,6 +98,11 @@ grep -q 'Нужно разрушить его цепочку контроля' j
 grep -q 'DANNA · local' js/scenes-act2.js || fail "inside-computer intro must use DANNA, not NEXAI echo"
 pass "same-day Act 1 computer mission hooks exist"
 
+[ -s assets/sprites/office_characters.png ] || fail "generated office sprite sheet must exist"
+grep -q '"glitched_worker"' assets/sprites/office_characters.json || fail "sprite manifest must include glitched worker"
+grep -q '"directions"' assets/sprites/office_characters.json || fail "sprite manifest must include directions"
+pass "generated PNG sprite sheet exists"
+
 if command -v osascript >/dev/null 2>&1; then
   for file in js/*.js; do
     output="$(osascript -l JavaScript "$file" 2>&1 || true)"
