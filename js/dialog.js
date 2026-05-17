@@ -46,6 +46,7 @@ function openPause() {
   const isFs = !!document.fullscreenElement;
   const items = [
     { label: "ПРОДОЛЖИТЬ", action: () => { Aud.uiSelect(); closePause(); } },
+    { label: "ОТНОШЕНИЯ", action: () => { Aud.uiSelect(); closePause(); openTrustReport(); } },
     { label: "СОХРАНИТЬ (выбрать слот)", action: () => { Aud.uiSelect(); const here = state.scene; closePause(); k.go("saves", { mode: "save", returnTo: here }); } },
     { label: "ЗАГРУЗИТЬ", action: () => { if (!hasAnySave()) { Aud.uiBack(); return; } Aud.uiSelect(); const here = state.scene; closePause(); k.go("saves", { mode: "load", returnTo: here }); } },
     { label: isFs ? "ВЫЙТИ ИЗ FULLSCREEN" : "FULLSCREEN (F)", action: () => { toggleFullscreen(); Aud.uiBlip(); closePause(); } },
@@ -81,6 +82,65 @@ function closePause() {
   paused = false;
   pauseObjs.forEach((o) => { if (o.destroy) o.destroy(); });
   pauseObjs = [];
+}
+
+// ---------------------------------------------------------------------
+// TRUST REPORT — read-only overlay showing relationship state.
+// Hidden underlying numbers (0..100), but presented qualitatively so the
+// player still has to read between the lines.
+// ---------------------------------------------------------------------
+let trustReportObjs = [];
+function closeTrustReport() {
+  paused = false;
+  trustReportObjs.forEach((o) => { if (o.destroy) o.destroy(); });
+  trustReportObjs = [];
+}
+function openTrustReport() {
+  paused = true;
+  trustReportObjs.push(k.add([k.rect(960, 600), k.color(0, 0, 0), k.opacity(0.85), k.pos(0, 0), k.fixed(), "trust-report"]));
+  trustReportObjs.push(k.add([k.text("ОТНОШЕНИЯ", { size: 32 }), k.color(232, 226, 212), k.pos(480, 60), k.anchor("center"), k.fixed()]));
+  trustReportObjs.push(k.add([k.text("// невидимая шкала. цифр нет — есть ощущение.", { size: 11 }), k.color(154, 147, 132), k.pos(480, 96), k.anchor("center"), k.fixed()]));
+
+  const names = {
+    timur: "ТИМУР · менеджер",
+    serik: "СЕРИК · старший разработчик",
+    dana: "ДАНА · DevOps",
+    aigerim: "АЙГЕРИМ · HR",
+    kamila: "КАМИЛА · бухгалтер"
+  };
+  // qualitative labels — игрок видит описание, не число
+  function describe(t) {
+    if (t >= 80) return { txt: "ДОВЕРЯЕТ ПОЛНОСТЬЮ", col: [120, 220, 140] };
+    if (t >= 60) return { txt: "на твоей стороне",   col: [168, 255, 101] };
+    if (t >= 40) return { txt: "нейтрально",          col: [200, 200, 210] };
+    if (t >= 25) return { txt: "относится прохладно", col: [255, 179, 71] };
+    return                  { txt: "не доверяет",     col: [255, 100, 110] };
+  }
+  const keys = ["serik", "timur", "dana", "aigerim", "kamila"];
+  keys.forEach((key, i) => {
+    const y = 150 + i * 60;
+    const t = getTrust(key);
+    const d = describe(t);
+    trustReportObjs.push(k.add([k.rect(800, 50), k.color(15, 17, 22), k.opacity(0.95), k.outline(1, k.rgb(80, 30, 36)), k.pos(80, y), k.fixed()]));
+    trustReportObjs.push(k.add([k.text(names[key] || key, { size: 14 }), k.color(232, 226, 212), k.pos(100, y + 8), k.fixed()]));
+    trustReportObjs.push(k.add([k.text(d.txt, { size: 14 }), k.color(d.col[0], d.col[1], d.col[2]), k.pos(100, y + 28), k.fixed()]));
+    // hidden bar on the right (a vague indicator, no number)
+    const barW = Math.max(8, Math.floor(t * 2.4));
+    trustReportObjs.push(k.add([k.rect(240, 6), k.color(40, 30, 36), k.pos(620, y + 22), k.fixed()]));
+    trustReportObjs.push(k.add([k.rect(barW, 6), k.color(d.col[0], d.col[1], d.col[2]), k.opacity(0.85), k.pos(620, y + 22), k.fixed()]));
+  });
+
+  // surveillance line
+  const surv = state.surveillance || 0;
+  const survLabel = surv >= 60 ? "NEXAI наблюдает за тобой пристально"
+                   : surv >= 30 ? "ты у NEXAI в списке"
+                   : surv >= 10 ? "NEXAI поглядывает"
+                   : "NEXAI пока тебя не выделяет";
+  trustReportObjs.push(k.add([k.text("// " + survLabel, { size: 12 }), k.color(194, 32, 42), k.opacity(0.9), k.pos(480, 470), k.anchor("center"), k.fixed()]));
+  trustReportObjs.push(k.add([k.text("ESC — закрыть", { size: 11 }), k.color(154, 147, 132), k.pos(480, 562), k.anchor("center"), k.fixed()]));
+
+  const onClose = k.onKeyPress("escape", () => { closeTrustReport(); onClose.cancel(); });
+  trustReportObjs.push({ destroy: () => onClose.cancel() });
 }
 
 function toggleLaptop() {

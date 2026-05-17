@@ -1,21 +1,61 @@
 // =====================================================================
+// SPRITE ATLAS — assets/sprites/office_characters.png
+//
+// 1024x192 atlas, 32x48 cells, 4 frames × 4 directions per character.
+// 8 characters packed horizontally; each occupies a 128x192 strip.
+// We register 4 sprite entries per character (one per direction), each
+// with a 4-frame walk animation, so kaplay can play "idle" / "walk".
+// =====================================================================
+const SPRITE_CHARS = ["ml_engineer", "dana_devops", "serik_lead", "aigerim_hr",
+                      "sysadmin", "night_guard", "glitched_worker", "pale_clone"];
+const SPRITE_DIRS = ["down", "left", "right", "up"];
+let spritesReady = false;
+
+(function loadOfficeAtlas() {
+  try {
+    const atlas = {};
+    SPRITE_CHARS.forEach((name, ci) => {
+      SPRITE_DIRS.forEach((dir, di) => {
+        atlas[`${name}_${dir}`] = {
+          x: ci * 128,
+          y: di * 48,
+          width: 128,
+          height: 48,
+          sliceX: 4,
+          sliceY: 1,
+          anims: {
+            idle: { from: 0, to: 0 },
+            walk: { from: 0, to: 3, loop: true, speed: 8 }
+          }
+        };
+      });
+    });
+    k.loadSpriteAtlas("assets/sprites/office_characters.png", atlas);
+    spritesReady = true;
+  } catch (e) {
+    console.warn("sprite atlas load failed, falling back to procedural", e);
+    spritesReady = false;
+  }
+})();
+
+// =====================================================================
 // CHARACTER ROSTER — each character has a unique look
 // =====================================================================
 const CHARS = {
   player: {
     skin: "#f0c8a0", hair: "#2a1a14", hairStyle: "messy",
     shirt: "#9aa39a", pants: "#2a2630", accent: "#c2202a",
-    name: "ТЫ"
+    name: "ТЫ", spriteKey: "ml_engineer"
   },
   player_senior: {
     skin: "#f0c8a0", hair: "#2a1a14", hairStyle: "messy",
     shirt: "#a8ff65", pants: "#2a2630", accent: "#c2202a",
-    name: "ТЫ · SR"
+    name: "ТЫ · SR", spriteKey: "ml_engineer"
   },
   dana: {
     skin: "#e8c8a8", hair: "#3a2418", hairStyle: "long",
     shirt: "#62c5ff", pants: "#1a2030", accent: "#ffb347",
-    name: "ДАНА"
+    name: "ДАНА", spriteKey: "dana_devops"
   },
   timur: {
     skin: "#f0c8a0", hair: "#1a1410", hairStyle: "short",
@@ -27,12 +67,12 @@ const CHARS = {
     skin: "#d8b08a", hair: "#1a1010", hairStyle: "buzz",
     facialHair: "stubble", accessory: "glasses",
     shirt: "#a8ff65", pants: "#1f1f24",
-    name: "СЕРИК"
+    name: "СЕРИК", spriteKey: "serik_lead"
   },
   receptionist: {
     skin: "#e0b890", hair: "#3a2a1a", hairStyle: "bun",
     shirt: "#62a5e8", pants: "#1f1f24", accent: "#ffffff",
-    name: "РЕСЕПШН"
+    name: "РЕСЕПШН", spriteKey: "aigerim_hr"
   },
   intern: {
     skin: "#e8c8a8", hair: "#3a2418", hairStyle: "cap",
@@ -116,7 +156,7 @@ const CHARS = {
     skin: "#d8b08a", hair: "#0f1014", hairStyle: "headphones",
     facialHair: "stubble", accessory: "laptop",
     shirt: "#26384c", pants: "#10141c", accent: "#62c5ff",
-    name: "Sysadmin"
+    name: "Sysadmin", spriteKey: "sysadmin"
   },
   analyst: {
     skin: "#e8c8a8", hair: "#2a1810", hairStyle: "bun",
@@ -146,17 +186,17 @@ const CHARS = {
   glitched_worker: {
     skin: "#e8e2d4", hair: "#050607", hairStyle: "messy",
     shirt: "#c2202a", pants: "#0e1014", accent: "#62c5ff",
-    name: "Сотрудник?"
+    name: "Сотрудник?", spriteKey: "glitched_worker"
   },
   pale_clone: {
     skin: "#d8e8e8", hair: "#0e1014", hairStyle: "short",
     shirt: "#9aa39a", pants: "#1f1f24", accent: "#c2202a",
-    name: "Копия"
+    name: "Копия", spriteKey: "pale_clone"
   },
   night_guard: {
     skin: "#d0a878", hair: "#1a1010", hairStyle: "buzz",
     facialHair: "stubble", shirt: "#141824", pants: "#101014", accent: "#ffb347",
-    name: "Охрана"
+    name: "Охрана", spriteKey: "night_guard"
   }
 };
 
@@ -222,6 +262,55 @@ function humanoid(opts = {}) {
 
   // shadow (rect — kaplay has no ellipse component)
   root.add([k.rect(22 * s, 6 * s), k.color(0, 0, 0), k.opacity(0.3), k.pos(-11 * s, H / 2 - 2), "shadow"]);
+
+  // ---------------------------------------------------------------------
+  // SPRITE MODE — when look.spriteKey is set and atlas is ready, render
+  // as a real sprite from office_characters.png instead of rect primitives.
+  // Falls back to procedural rendering if anything goes wrong.
+  // ---------------------------------------------------------------------
+  if (o.spriteKey && spritesReady) {
+    const want = (face) => `${o.spriteKey}_${face}`;
+    let spriteOk = true;
+    let spr = null;
+    try {
+      spr = root.add([
+        k.sprite(want("down"), { anim: "idle" }),
+        k.anchor("center"),
+        k.pos(0, -4 * s),
+        k.scale(s * 1.05),
+        "humanoid-sprite"
+      ]);
+    } catch (e) {
+      spriteOk = false;
+    }
+    if (spriteOk && spr) {
+      // name tag above
+      if (o.name && !o.noName) {
+        root.add([
+          k.text(o.name, { size: 10 }),
+          k.color(255, 255, 255),
+          k.pos(0, -30 * s),
+          k.anchor("center"),
+          "nametag"
+        ]);
+      }
+      // per-frame: switch direction + anim based on face/walking
+      let curKey = want("down");
+      let curAnim = "idle";
+      root.onUpdate(() => {
+        const targetKey = want(root.face || "down");
+        const targetAnim = root.walking ? "walk" : "idle";
+        if (targetKey !== curKey) {
+          try { spr.use(k.sprite(targetKey, { anim: targetAnim })); curKey = targetKey; curAnim = targetAnim; }
+          catch (e) { /* keep current */ }
+        } else if (targetAnim !== curAnim) {
+          try { spr.play(targetAnim, { loop: targetAnim === "walk" }); curAnim = targetAnim; }
+          catch (e) { /* ignore */ }
+        }
+      });
+      return root;
+    }
+  }
 
   // legs
   const legL = px(-7 * s, 6 * s, 6 * s, 12 * s, o.pants, "leg-l");

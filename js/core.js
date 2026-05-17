@@ -260,11 +260,99 @@ function defaultState() {
     quests: {},
     inventory: {},
     factions: { timur: 0, serik: 0, dana: 0, kamila: 0 },
-    log: []
+    log: [],
+
+    // =================================================================
+    // FOUNDATION: trust / dialog memory / surveillance
+    //
+    // trust[char]  — hidden 0..100, starts ~50; nudged by dialog choices.
+    //                Drives Act 4 vote: characters with trust>=60 vote with
+    //                the player, below — against.
+    // choices[id]  — record of important choices ("dialogId" → value).
+    //                Lets NPCs reference past answers in later scenes.
+    // surveillance — 0..100; rises when player antagonises NEXAI / asks
+    //                too many questions / collects evidence. High values
+    //                trigger visual glitches and tag the player "in base".
+    // =================================================================
+    trust: { timur: 50, serik: 50, dana: 50, aigerim: 50, kamila: 50 },
+    choices: {},
+    surveillance: 0,
+    inBaseFlagged: false
   };
 }
 
 const state = defaultState();
+
+// =====================================================================
+// FOUNDATION HELPERS — trust / choices / surveillance
+// =====================================================================
+const TRUST_CHARS = ["timur", "serik", "dana", "aigerim", "kamila"];
+
+function _ensureFoundation() {
+  if (!state.trust) state.trust = { timur: 50, serik: 50, dana: 50, aigerim: 50, kamila: 50 };
+  if (!state.choices) state.choices = {};
+  if (state.surveillance == null) state.surveillance = 0;
+  if (state.inBaseFlagged == null) state.inBaseFlagged = false;
+}
+
+// nudgeTrust("serik", +5) — clamp to [0..100]. Pass an object to nudge several at once.
+function nudgeTrust(charOrMap, delta) {
+  _ensureFoundation();
+  const apply = (c, d) => {
+    if (!(c in state.trust)) state.trust[c] = 50;
+    state.trust[c] = Math.max(0, Math.min(100, state.trust[c] + d));
+  };
+  if (typeof charOrMap === "object" && charOrMap) {
+    for (const c in charOrMap) apply(c, charOrMap[c]);
+  } else {
+    apply(charOrMap, delta);
+  }
+}
+
+function getTrust(char) {
+  _ensureFoundation();
+  return state.trust[char] == null ? 50 : state.trust[char];
+}
+
+function trustTier(char) {
+  const t = getTrust(char);
+  if (t >= 75) return "high";
+  if (t >= 60) return "with";  // votes with you in Act 4
+  if (t >= 40) return "neutral";
+  if (t >= 25) return "cool";
+  return "against";
+}
+
+function recordChoice(id, value) {
+  _ensureFoundation();
+  state.choices[id] = value == null ? true : value;
+}
+function hasChoice(id, value) {
+  _ensureFoundation();
+  if (value == null) return id in state.choices;
+  return state.choices[id] === value;
+}
+function getChoice(id) {
+  _ensureFoundation();
+  return state.choices[id];
+}
+
+function nudgeSurveillance(delta) {
+  _ensureFoundation();
+  state.surveillance = Math.max(0, Math.min(100, state.surveillance + delta));
+  if (state.surveillance >= 30 && !state.inBaseFlagged) {
+    state.inBaseFlagged = true;
+    logLine("NEXAI ● добавил тебя в наблюдение.");
+  }
+}
+
+// Convenience for dialog choices: record the choice + nudge trust + nudge surveillance in one call.
+// usage: choose("interview_experience", "honest", { serik: +6, timur: -3 }, { surveillance: +1 })
+function choose(id, value, trustMap, extras) {
+  recordChoice(id, value);
+  if (trustMap) nudgeTrust(trustMap);
+  if (extras && extras.surveillance) nudgeSurveillance(extras.surveillance);
+}
 
 // normalize state.task strings — every assignment should look like "Задача: …"
 function setTask(t) {
@@ -471,7 +559,19 @@ function createGameHUD() {
   gameHud.root = hud;
 
   hud.add([k.rect(960, 74), k.color(5, 7, 10), k.opacity(0.78), k.pos(0, 0)]);
-  hud.add([k.rect(960, 2), k.color(194, 32, 42), k.opacity(0.78), k.pos(0, 74)]);
+  // surveillance bar: hidden when low, intensifies as NEXAI focuses on the player
+  const surv = Math.max(0, Math.min(100, state.surveillance || 0));
+  const barColor = surv >= 60 ? [255, 60, 70] : surv >= 30 ? [220, 90, 60] : [194, 32, 42];
+  hud.add([k.rect(960, 2), k.color(barColor[0], barColor[1], barColor[2]), k.opacity(0.78), k.pos(0, 74)]);
+  // a faint surveillance overlay (only visible when threshold crossed)
+  if (surv >= 30) {
+    const flicker = k.add([k.rect(960, 600), k.color(194, 32, 42), k.opacity(0.04 + (surv - 30) / 500), k.pos(0, 0), k.fixed(), k.z(995), "game-hud"]);
+    flicker.onUpdate(() => { flicker.opacity = 0.03 + (surv / 1800) + (Math.sin(k.time() * 7) > 0.96 ? 0.06 : 0); });
+  }
+  // "в базе" marker
+  if (state.inBaseFlagged) {
+    hud.add([k.text("◉ NEXAI", { size: 9 }), k.color(194, 32, 42), k.opacity(0.85), k.pos(880, 6)]);
+  }
   hud.add([k.text(`АКТ ${a}: ${actTitle(a)}`, { size: 13 }), k.color(255, 179, 71), k.pos(20, 12)]);
   hud.add([k.text(shortText(state.task, 72), { size: 13 }), k.color(232, 226, 212), k.pos(20, 34)]);
   hud.add([k.text(`Локация: ${shortText(sceneTitle(state.scene), 28)}`, { size: 10 }), k.color(154, 147, 132), k.pos(20, 55)]);

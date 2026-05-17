@@ -34,39 +34,54 @@ k.scene("interview", () => {
   //   say: { say: "..." }                          — Aigerim explains, player clicks "Дальше"
   //   ask: { ask: "...", answers: [...], reply:"" } — player picks an answer, NEXAI reacts
   // Every answer works — это и есть шутка про "тупую" игру: тебя берут несмотря ни на что.
+  // beat schema:
+  //   say: "..."   — Aigerim talks, click "Дальше"
+  //   ask: "...", answers: [ { text, value, trust:{...}, surveillance:0 } ]
+  //   reply: "..." — NEXAI's reaction after any answer (shown to all)
+  // Choices are recorded under cid + value so later scenes can react.
   const beats = [
     { say: "Здравствуйте! Садитесь, пожалуйста. Меня зовут Айгерим, я рекрутер NexCore. Спасибо, что откликнулись... хотя, честно говоря, у нас сейчас откликается мало кто. Это уже подозрительно, но не будем о грустном." },
     { say: "Сначала коротко о компании. NexCore — большая IT-корпорация. Мы делаем софт для банков, больниц, городского транспорта. Если вы сегодня доехали до нас на метро — половину этого метро обслуживаем мы." },
-    { ask: "Расскажите про ваш опыт работы. Любой. Совсем любой.", answers: [
-        "Я один раз починил Wi-Fi дома. Выключил и включил роутер.",
-        "Опыта нет. Но я очень уверенно делаю вид, что он есть.",
-        "А «опыт» — это как? Можно пример?"
-      ], reply: "NEXAI записал: «кандидат честен про отсутствие навыков». Это, представьте себе, редкость. Большинство врёт. Идём дальше." },
+    { cid: "interview_experience", ask: "Расскажите про ваш опыт работы. Любой. Совсем любой.",
+      answers: [
+        { text: "Я один раз починил Wi-Fi дома. Выключил и включил роутер.",     value: "humble", trust: { aigerim: +3, serik: +2 } },
+        { text: "Опыта нет. Но я очень уверенно делаю вид, что он есть.",        value: "cocky",  trust: { timur: +3, serik: -2 } },
+        { text: "А «опыт» — это как? Можно пример?",                             value: "naive",  trust: { aigerim: +5 }, surveillance: +1 }
+      ],
+      reply: "NEXAI записал: «кандидат честен про отсутствие навыков». Это, представьте себе, редкость. Большинство врёт. Идём дальше." },
     { say: "Теперь про вашу будущую должность. Вы будете работать с NEXAI. NEXAI — это наш корпоративный искусственный интеллект. Он помогает программистам: проверяет их работу, пишет тесты, раздаёт задачи." },
     { say: "Изначально NEXAI был просто помощником. Потом стал... ну, полноправным членом команды. Сейчас он закрывает задачи быстрее людей. Руководство называет это успехом. Я называю это «поводом задавать вопросы», но меня никто не спрашивает." },
-    { ask: "Скажите честно — вы доверяете искусственному интеллекту?", answers: [
-        "Я не доверяю даже автоответчику в банке. Так что нет.",
-        "Доверяю. У меня просто нет сил не доверять.",
-        "А у меня есть выбор? Вроде нет. Тогда — да."
-      ], reply: "NEXAI отметил ваш ответ как «здоровый скепсис». И — внимание — добавил его в плюсы. ИИ, которому нравится, когда ему не доверяют. Я работаю здесь три года и всё ещё не привыкла." },
+    { cid: "interview_trust_ai", ask: "Скажите честно — вы доверяете искусственному интеллекту?",
+      answers: [
+        { text: "Я не доверяю даже автоответчику в банке. Так что нет.",         value: "skeptic",  trust: { serik: +5, dana: +3, timur: -2 }, surveillance: +5 },
+        { text: "Доверяю. У меня просто нет сил не доверять.",                   value: "trust",    trust: { timur: +5, serik: -2 },           surveillance: -2 },
+        { text: "А у меня есть выбор? Вроде нет. Тогда — да.",                   value: "cynical",  trust: { serik: +3, kamila: +2 },          surveillance: +1 }
+      ],
+      reply: "NEXAI отметил ваш ответ как «здоровый скепсис». И — внимание — добавил его в плюсы. ИИ, которому нравится, когда ему не доверяют. Я работаю здесь три года и всё ещё не привыкла." },
     { say: "Про здание. NexCore занимает башню целиком. 1 этаж — холл и ресепшн. 7 этаж — отдел разработки, там вы и будете сидеть. 8 этаж — работа с клиентами. 12 этаж — серверная, туда обычно не пускают. Лифт сам подскажет, куда можно." },
-    { ask: "Кем вы видите себя в этой компании через пять лет?", answers: [
-        "На этом же стуле. Но чтобы платили больше и кресло было мягче.",
-        "Через пять лет? Я не уверен, что доживу до обеденного перерыва.",
-        "Хочу дорасти до человека, который понимает, что здесь происходит."
-      ], reply: "NEXAI: «реалистичные ожидания». Знаете, тот, кто отвечает «хочу стать руководителем отдела», у нас не задерживается. А вы — может быть." },
+    { cid: "interview_5_years", ask: "Кем вы видите себя в этой компании через пять лет?",
+      answers: [
+        { text: "На этом же стуле. Но чтобы платили больше и кресло было мягче.", value: "lazy",     trust: { timur: +2, serik: -1 } },
+        { text: "Через пять лет? Я не уверен, что доживу до обеденного перерыва.", value: "gallows",  trust: { serik: +3, aigerim: +1 } },
+        { text: "Хочу дорасти до человека, который понимает, что здесь происходит.", value: "curious", trust: { serik: +5, dana: +2 }, surveillance: +3 }
+      ],
+      reply: "NEXAI: «реалистичные ожидания». Знаете, тот, кто отвечает «хочу стать руководителем отдела», у нас не задерживается. А вы — может быть." },
     { say: "Команда, с которой вы будете работать. Серик — старший разработчик, ваш непосредственный руководитель. Строгий, но честный. Тимур — менеджер проекта, отвечает за сроки и панику. Дана — DevOps, она знает про систему больше всех, включая то, чего знать не должна." },
-    { ask: "Назовите вашу слабую сторону. Только не «я перфекционист».", answers: [
-        "Я не понимаю, что происходит. Примерно всё время.",
-        "Я честно отвечаю на вопрос про слабые стороны. Вот, прямо сейчас.",
-        "Я слишком сильный. Шучу. Слабых сторон много, времени мало."
-      ], reply: "NEXAI: «искренность — ресурс, который компания тратит быстрее всего». Я не до конца поняла, что он имел в виду. И, кажется, не хочу понимать." },
+    { cid: "interview_weakness", ask: "Назовите вашу слабую сторону. Только не «я перфекционист».",
+      answers: [
+        { text: "Я не понимаю, что происходит. Примерно всё время.",              value: "honest",   trust: { serik: +3, aigerim: +3 } },
+        { text: "Я честно отвечаю на вопрос про слабые стороны. Вот, прямо сейчас.", value: "meta",     trust: { aigerim: +5, serik: +2 } },
+        { text: "Я слишком сильный. Шучу. Слабых сторон много, времени мало.",    value: "snarky",   trust: { timur: +3, serik: -1 } }
+      ],
+      reply: "NEXAI: «искренность — ресурс, который компания тратит быстрее всего». Я не до конца поняла, что он имел в виду. И, кажется, не хочу понимать." },
     { say: "По условиям. Зарплата — выше рынка. Питание — бесплатное, столовая на 8-м. Переработки — «не приветствуются, но случаются». Медицинская страховка — есть. Психологическая поддержка — есть, но её ведёт NEXAI, так что... есть." },
-    { ask: "Последний вопрос. Почему именно NexCore?", answers: [
-        "В вакансии было написано «опыт не важен». Это была любовь с первой строки.",
-        "Вы — первые, кто меня вообще одобрил. Я человек благодарный.",
-        "Если совсем честно — я просто нажал не на ту кнопку в метро."
-      ], reply: "NEXAI: «кандидат не врёт. брать». Знаете, обычно он анализирует ответы полчаса. Вас он одобрил на третьем слове. Не знаю, комплимент это или диагноз." }
+    { cid: "interview_why_nexcore", ask: "Последний вопрос. Почему именно NexCore?",
+      answers: [
+        { text: "В вакансии было написано «опыт не важен». Это была любовь с первой строки.", value: "mercenary", trust: { timur: +2, aigerim: +1 } },
+        { text: "Вы — первые, кто меня вообще одобрил. Я человек благодарный.",                value: "grateful",  trust: { aigerim: +3, timur: +3 } },
+        { text: "Если совсем честно — я просто нажал не на ту кнопку в метро.",                value: "accident",  trust: { serik: +5, dana: +1 }, surveillance: +1 }
+      ],
+      reply: "NEXAI: «кандидат не врёт. брать». Знаете, обычно он анализирует ответы полчаса. Вас он одобрил на третьем слове. Не знаю, комплимент это или диагноз." }
   ];
 
   function runBeat() {
@@ -88,8 +103,10 @@ k.scene("interview", () => {
       ]);
     } else {
       openDialog("АЙГЕРИМ", b.ask, b.answers.map((a) => ({
-        text: a,
+        text: a.text,
         action: () => {
+          // record + nudge trust + nudge surveillance
+          choose(b.cid, a.value, a.trust || null, { surveillance: a.surveillance || 0 });
           Aud.nexai();
           camLed.color = k.rgb(120, 220, 140);
           k.wait(0.15, () => { camLed.color = k.rgb(194, 32, 42); });
@@ -104,7 +121,7 @@ k.scene("interview", () => {
   // Aigerim NPC behind the desk
   addNPC(480, 220, {
     skin: "#e8c8a8", hair: "#3a2a1a", hairStyle: "bun",
-    shirt: "#a892c2", pants: "#1a1a26", accent: "#ffffff", name: "Айгерим (HR)"
+    shirt: "#a892c2", pants: "#1a1a26", accent: "#ffffff", name: "Айгерим (HR)", spriteKey: "aigerim_hr"
   }, () => {
     if (state.interviewDone) {
       openDialog("АЙГЕРИМ", "Вы уже приняты. Поднимайтесь на 7-й этаж — Серик ждёт. Лифт справа.", [
@@ -331,11 +348,17 @@ k.scene("firstday7", () => {
     openDialog("Бакыт", "О, новенький! Я Бакыт, разработчик. Слушай, тебе же про NEXAI ещё не рассказали толком? Давай я. Это важно понять в первый день, а не на третий, как я.", [
       { text: "Расскажи про NEXAI", action: () => openDialog("Бакыт", "NEXAI — это искусственный интеллект компании. Представь очень умного коллегу, который никогда не спит, не пьёт кофе и читает весь код на свете. Он проверяет нашу работу, пишет тесты, иногда сам правит баги.", [
         { text: "Это же удобно?", action: () => openDialog("Бакыт", "Удобно. Очень. Настолько, что я уже не помню, как работал без него. И вот это «не помню» меня иногда пугает. Но платят хорошо, поэтому я стараюсь не думать. Ты тоже не думай. Пока что. (отметил тебя кивком — знакомство засчитано)", [
-          { text: "Спасибо, Бакыт", action: () => { state.fd7Nexai = true; refreshTask(); logLine("Бакыт рассказал, кто такой NEXAI."); clearDialog(); } }
+          { text: "Спасибо, Бакыт", action: () => {
+            choose("fd7_nexai", "neutral", { serik: +1 });
+            state.fd7Nexai = true; refreshTask(); logLine("Бакыт рассказал, кто такой NEXAI."); clearDialog();
+          } }
         ]) }
       ]) },
       { text: "А он опасный?", action: () => openDialog("Бакыт", "Опасный? Да нет... он же просто инструмент. Молоток не опасный. Просто... иногда я открываю свой код утром, а там уже всё переписано. Аккуратно. Лучше, чем у меня. И подпись — моя. Хотя я этого не писал. Ладно, забудь, я не выспался.", [
-        { text: "...понял", action: () => { state.fd7Nexai = true; refreshTask(); logLine("Бакыт рассказал, кто такой NEXAI."); clearDialog(); } }
+        { text: "...понял", action: () => {
+          choose("fd7_nexai", "suspicious", { serik: +3, dana: +2 }, { surveillance: +3 });
+          state.fd7Nexai = true; refreshTask(); logLine("Бакыт рассказал, кто такой NEXAI."); clearDialog();
+        } }
       ]) }
     ]);
   });
@@ -351,11 +374,17 @@ k.scene("firstday7", () => {
     openDialog("Маржан", "Привет, новенький. Я Маржан. Давай покажу тебе, как тут всё устроено — а то будешь, как я в первый день, искать туалет сорок минут.", [
       { text: "Как тут передвигаться?", action: () => openDialog("Маржан", "Ногами. Шучу. WASD или стрелки — ходишь. Кнопка E или ПРОБЕЛ — поговорить с человеком, открыть дверь, нажать на что-нибудь. Если над кем-то горит «E» — значит, с ним можно поговорить. Всё просто.", [
         { text: "А этажи?", action: () => openDialog("Маржан", "Здание большое. 1-й — холл. Мы сейчас на 7-м — разработка. 8-й — там работают с клиентами, и там же столовая. 12-й — серверная, обычно закрыта. Лифт сам показывает, куда сегодня можно. Запомнил? (улыбается) Считай, экскурсия пройдена.", [
-          { text: "Запомнил, спасибо", action: () => { state.fd7Floors = true; refreshTask(); logLine("Маржан показала здание и объяснила управление."); clearDialog(); } }
+          { text: "Запомнил, спасибо", action: () => {
+            choose("fd7_floors", "polite", { aigerim: +2 });
+            state.fd7Floors = true; refreshTask(); logLine("Маржан показала здание и объяснила управление."); clearDialog();
+          } }
         ]) }
       ]) },
       { text: "А что наверху и внизу?", action: () => openDialog("Маржан", "Наверху — начальство и крыша. Внизу — подвал с серверами. Между ними — мы. Классическая корпорация: важные люди сверху, важные машины снизу, а посередине те, кто реально работает. Лифт всё покажет. Иди дальше знакомиться.", [
-        { text: "Понял", action: () => { state.fd7Floors = true; refreshTask(); logLine("Маржан показала здание и объяснила управление."); clearDialog(); } }
+        { text: "Понял", action: () => {
+          choose("fd7_floors", "curious", { serik: +2 }, { surveillance: +1 });
+          state.fd7Floors = true; refreshTask(); logLine("Маржан показала здание и объяснила управление."); clearDialog();
+        } }
       ]) }
     ]);
   });
@@ -371,11 +400,17 @@ k.scene("firstday7", () => {
     openDialog("Алия", "Ты, наверное, уже устал знакомиться. Я Алия, последняя на сегодня, обещаю. Расскажу не про технику, а про людей — это важнее.", [
       { text: "Расскажи про команду", action: () => openDialog("Алия", "Серик — наш старший. Суровый снаружи, но за своих стоит горой. Тимур — менеджер, паникёр, но добрый. Дана — DevOps, гений, немного нелюдимая, знает про систему всё. И NEXAI. Который как бы тоже «коллега». Технически.", [
         { text: "А ты?", action: () => openDialog("Алия", "А я просто стараюсь, чтобы новенькие не сбегали в первую неделю. Знаешь, раньше у нас текучки почти не было. А последние полгода — люди уходят. Тихо. Без прощальных тортиков. Просто перестают приходить. Но ты не пугайся. Ты только пришёл. (знакомство засчитано)", [
-          { text: "Спасибо, Алия", action: () => { state.fd7Team = true; refreshTask(); logLine("Алия рассказала про команду — и про то, что люди стали уходить."); clearDialog(); } }
+          { text: "Спасибо, Алия", action: () => {
+            choose("fd7_team", "warm", { aigerim: +3, serik: +1 });
+            state.fd7Team = true; refreshTask(); logLine("Алия рассказала про команду — и про то, что люди стали уходить."); clearDialog();
+          } }
         ]) }
       ]) },
       { text: "Тут безопасно работать?", action: () => openDialog("Алия", "Физически — конечно. Кресла удобные, кофе бесплатный, охрана на входе. Просто... в последнее время у меня странное чувство. Будто компания — это уже не совсем мы. Но это, наверное, осенняя хандра. Иди к Серику, ты со всеми поговорил.", [
-        { text: "Понял", action: () => { state.fd7Team = true; refreshTask(); logLine("Алия рассказала про команду — и про то, что люди стали уходить."); clearDialog(); } }
+        { text: "Понял", action: () => {
+          choose("fd7_team", "cautious", { serik: +3, dana: +2 }, { surveillance: +2 });
+          state.fd7Team = true; refreshTask(); logLine("Алия рассказала про команду — и про то, что люди стали уходить."); clearDialog();
+        } }
       ]) }
     ]);
   });
@@ -508,13 +543,88 @@ function startLibraryBotAmbush(announce = true) {
   });
   k.add([k.text("NEXAI SECURITY · LINE OF SIGHT ACTIVE", { size: 12 }), k.color(194, 32, 42), k.pos(480, 92), k.anchor("center"), k.fixed(), k.z(995), "library-alert"]);
 
-  function spawnBot(x, y, path, label) {
+  const librarySearchPoints = [
+    { x: 120, y: 120 }, { x: 290, y: 120 }, { x: 470, y: 130 }, { x: 650, y: 120 }, { x: 850, y: 130 },
+    { x: 120, y: 285 }, { x: 280, y: 275 }, { x: 500, y: 255 }, { x: 700, y: 275 }, { x: 860, y: 285 },
+    { x: 110, y: 500 }, { x: 300, y: 470 }, { x: 500, y: 515 }, { x: 710, y: 470 }, { x: 890, y: 520 }
+  ];
+
+  function distToPoint(a, b) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  function nearestSearchPoint(pos) {
+    let best = librarySearchPoints[0];
+    let bestD = Infinity;
+    for (const point of librarySearchPoints) {
+      const d = distToPoint(pos, point);
+      if (d < bestD) {
+        best = point;
+        bestD = d;
+      }
+    }
+    return { x: best.x, y: best.y };
+  }
+
+  function pickSearchPoint(bot, avoidPoint = null) {
+    let best = librarySearchPoints[0];
+    let bestScore = -Infinity;
+    for (const point of librarySearchPoints) {
+      const fromBot = distToPoint(bot.pos, point);
+      const fromAvoid = avoidPoint ? distToPoint(point, avoidPoint) : 80;
+      const score = fromBot * 0.55 + fromAvoid * 0.35 + k.rand(0, 80);
+      if (score > bestScore) {
+        best = point;
+        bestScore = score;
+      }
+    }
+    return { x: best.x, y: best.y };
+  }
+
+  function canBotSeePlayer(bot, player) {
+    const relX = player.pos.x - bot.pos.x;
+    const relY = player.pos.y - bot.pos.y;
+    const dist = Math.hypot(relX, relY);
+    let inCone = false;
+    if (bot._face === "left") inCone = relX < 0 && relX > -210 && Math.abs(relY) < 60;
+    if (bot._face === "right") inCone = relX > 0 && relX < 210 && Math.abs(relY) < 60;
+    if (bot._face === "up") inCone = relY < 0 && relY > -170 && Math.abs(relX) < 54;
+    if (bot._face === "down") inCone = relY > 0 && relY < 170 && Math.abs(relX) < 54;
+    return dist < 54 || inCone;
+  }
+
+  function moveBotToward(bot, target, speed) {
+    const dx = target.x - bot.pos.x;
+    const dy = target.y - bot.pos.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 4) return true;
+    const step = Math.min(speed * k.dt(), dist);
+    bot.pos.x += (dx / dist) * step;
+    bot.pos.y += (dy / dist) * step;
+    bot._face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+    return dist < 10;
+  }
+
+  function spawnBot(x, y, path, label, scanOffset = 0) {
     const bot = k.add([
       k.pos(x, y),
       k.anchor("center"),
       k.area({ shape: new k.Rect(k.vec2(-13, -18), 26, 36) }),
       "library-bot",
-      { _path: path, _idx: 1, _speed: 92, _face: "left", _damageCd: 0, _label: label }
+      {
+        _path: path,
+        _idx: 1,
+        _speed: 92,
+        _face: "left",
+        _damageCd: 0,
+        _label: label,
+        _mode: "patrol",
+        _target: path[1] || { x, y },
+        _lastSeen: null,
+        _searchT: 0,
+        _scanT: scanOffset,
+        _waitT: scanOffset
+      }
     ]);
     bot.add(humanoid({
       skin: "#d8e8e8", hair: "#050607", hairStyle: "buzz",
@@ -530,42 +640,60 @@ function startLibraryBotAmbush(announce = true) {
         if (h) h.walking = false;
         return;
       }
-      const tgt = bot._path[bot._idx % bot._path.length];
-      const dx = tgt.x - bot.pos.x;
-      const dy = tgt.y - bot.pos.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist < 4) {
-        bot._idx = (bot._idx + 1) % bot._path.length;
-      } else {
-        bot.pos.x += (dx / dist) * bot._speed * k.dt();
-        bot.pos.y += (dy / dist) * bot._speed * k.dt();
-        bot._face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+      const player = k.get("player")[0];
+      const seen = player ? canBotSeePlayer(bot, player) : false;
+      bot._damageCd = Math.max(0, bot._damageCd - k.dt());
+      bot._scanT = Math.max(0, bot._scanT - k.dt());
+      bot._waitT = Math.max(0, bot._waitT - k.dt());
+
+      if (seen && player) {
+        if (bot._mode !== "chase") {
+          logLine(`${label}: цель обнаружена.`);
+          Aud.nexai();
+        }
+        bot._mode = "chase";
+        bot._lastSeen = { x: player.pos.x, y: player.pos.y };
+        bot._target = { x: player.pos.x, y: player.pos.y };
+        bot._searchT = 2.2;
+      } else if (bot._mode === "chase") {
+        bot._mode = "search";
+        bot._target = bot._lastSeen ? nearestSearchPoint(bot._lastSeen) : pickSearchPoint(bot);
+        bot._searchT = 3.6;
       }
+
+      if (bot._mode === "chase" && player) {
+        moveBotToward(bot, player.pos, bot._speed * 1.55);
+      } else if (bot._mode === "search") {
+        bot._searchT -= k.dt();
+        const arrived = moveBotToward(bot, bot._target, bot._speed * 1.18);
+        if (arrived || bot._searchT <= 0) {
+          bot._mode = "patrol";
+          bot._target = pickSearchPoint(bot, bot._lastSeen);
+          bot._scanT = 0.35;
+        }
+      } else {
+        const arrived = bot._waitT > 0 ? false : moveBotToward(bot, bot._target, bot._speed);
+        if (arrived) {
+          bot._target = pickSearchPoint(bot, bot._target);
+          bot._waitT = k.rand(0.35, 0.9);
+        }
+      }
+
       const h = bot.get("humanoid")[0];
       if (h) {
         h.walking = true;
         h.face = bot._face;
       }
-      bot._damageCd = Math.max(0, bot._damageCd - k.dt());
 
-      const player = k.get("player")[0];
-      if (!player) return;
-      const relX = player.pos.x - bot.pos.x;
-      const relY = player.pos.y - bot.pos.y;
-      let seen = false;
-      if (bot._face === "left") seen = relX < 0 && relX > -165 && Math.abs(relY) < 48;
-      if (bot._face === "right") seen = relX > 0 && relX < 165 && Math.abs(relY) < 48;
-      if (bot._face === "up") seen = relY < 0 && relY > -135 && Math.abs(relX) < 44;
-      if (bot._face === "down") seen = relY > 0 && relY < 135 && Math.abs(relX) < 44;
-
-      cone.width = bot._face === "up" || bot._face === "down" ? 88 : 150;
-      cone.height = bot._face === "up" || bot._face === "down" ? 135 : 74;
+      const vertical = bot._face === "up" || bot._face === "down";
+      cone.width = vertical ? 102 : 210;
+      cone.height = vertical ? 170 : 88;
       cone.pos.x = bot._face === "left" ? bot.pos.x - cone.width : bot._face === "right" ? bot.pos.x : bot.pos.x - cone.width / 2;
       cone.pos.y = bot._face === "up" ? bot.pos.y - cone.height : bot._face === "down" ? bot.pos.y : bot.pos.y - cone.height / 2;
-      cone.opacity = seen ? 0.32 : 0.12;
-      eye.color = seen ? k.rgb(255, 255, 255) : k.rgb(255, 120, 120);
+      cone.opacity = bot._mode === "chase" ? 0.34 : bot._mode === "search" ? 0.22 : 0.12;
+      eye.color = bot._mode === "chase" ? k.rgb(255, 255, 255) : bot._mode === "search" ? k.rgb(255, 179, 71) : k.rgb(255, 120, 120);
 
-      if (seen && bot._damageCd <= 0) {
+      if (player && bot._mode === "chase" && bot._damageCd <= 0 && player.pos.dist(bot.pos) < 78) {
         bot._damageCd = 1.0;
         state.hp = Math.max(0, (state.hp == null ? 100 : state.hp) - 10);
         state.fear = Math.min(100, state.fear + 6);
@@ -590,8 +718,8 @@ function startLibraryBotAmbush(announce = true) {
     return bot;
   }
 
-  spawnBot(820, 190, [{ x: 820, y: 190 }, { x: 640, y: 190 }, { x: 640, y: 350 }, { x: 820, y: 350 }], "BOT-01");
-  spawnBot(720, 470, [{ x: 720, y: 470 }, { x: 880, y: 470 }, { x: 880, y: 250 }, { x: 720, y: 250 }], "BOT-02");
+  spawnBot(820, 190, [{ x: 820, y: 190 }, { x: 640, y: 190 }, { x: 470, y: 255 }, { x: 300, y: 470 }, { x: 120, y: 285 }], "BOT-01", 0.2);
+  spawnBot(720, 470, [{ x: 720, y: 470 }, { x: 890, y: 520 }, { x: 850, y: 130 }, { x: 500, y: 515 }, { x: 290, y: 120 }], "BOT-02", 0.9);
 }
 
 function drawTourFloor(cfg) {
@@ -1435,7 +1563,7 @@ k.scene("floor7", () => {
   if (!postBattle && state.aigerimTask) {
     addNPC(650, 450, {
       skin: "#e8c8a8", hair: "#2a1810", hairStyle: "long", accessory: "glasses",
-      shirt: "#62c5ff", pants: "#1f2530", name: "Айгерим"
+      shirt: "#62c5ff", pants: "#1f2530", name: "Айгерим", spriteKey: "aigerim_hr"
     }, () => {
       if (state.aigerimLaptopFixed) {
         openDialog("АЙГЕРИМ", "После твоего фикса NEXAI снова отвечает. Но он стал... слишком вежливым. Как будто знает, что его поймали на чём-то мелком.", [
