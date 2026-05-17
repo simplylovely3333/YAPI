@@ -162,18 +162,18 @@ k.scene("menu", () => {
       const y = 340 + i * 60;
       const selected = i === sel;
       if (selected) {
-        k.drawRect({ pos: k.vec2(280, y - 22), width: 400, height: 40, color: k.rgb(194, 32, 42), opacity: 0.18, outline: { width: 1, color: k.rgb(194, 32, 42) } });
+        k.drawRect({ pos: k.vec2(250, y - 28), width: 460, height: 52, color: k.rgb(194, 32, 42), opacity: 0.18, outline: { width: 1, color: k.rgb(194, 32, 42) } });
       }
       k.drawText({
         text: (selected ? "▸ " : "  ") + it.label,
-        size: 22, pos: k.vec2(480, y),
+        size: 28, pos: k.vec2(480, y),
         anchor: "center",
         color: it.disabled ? k.rgb(60, 56, 50) : (selected ? k.rgb(255, 255, 255) : k.rgb(154, 147, 132))
       });
     });
 
-    k.drawText({ text: "↑ ↓ выбор    ENTER / E / SPACE подтвердить", size: 11, pos: k.vec2(480, 540), anchor: "center", color: k.rgb(90, 84, 72) });
-    k.drawText({ text: "Error 403: Humans deprecated", size: 11, pos: k.vec2(480, 562), anchor: "center", color: k.rgb(90, 84, 72) });
+    k.drawText({ text: "Стик: выбор    E / тап подтвердить", size: 16, pos: k.vec2(480, 540), anchor: "center", color: k.rgb(90, 84, 72) });
+    k.drawText({ text: "Error 403: Humans deprecated", size: 14, pos: k.vec2(480, 562), anchor: "center", color: k.rgb(90, 84, 72) });
   });
 
   function step(dir) {
@@ -183,6 +183,14 @@ k.scene("menu", () => {
   function confirm() {
     if (!items[sel].disabled) items[sel].action();
   }
+  function confirmAt(y) {
+    const hit = items.findIndex((it, i) => !it.disabled && y >= 340 + i * 60 - 28 && y <= 340 + i * 60 + 28);
+    if (hit < 0) return false;
+    sel = hit;
+    confirm();
+    return true;
+  }
+  mobileSceneTouch = (_x, y) => confirmAt(y);
   let nextMobileNavAt = 0;
   k.onKeyPress("up", () => step(-1));
   k.onKeyPress("w", () => step(-1));
@@ -230,8 +238,8 @@ k.scene("saves", ({ mode = "load", returnTo = "menu" } = {}) => {
     k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 600, color: k.rgb(5, 6, 7) });
     for (let y = 0; y < 600; y += 3) k.drawRect({ pos: k.vec2(0, y), width: 960, height: 1, color: k.rgb(232, 226, 212), opacity: 0.02 });
     const titleText = mode === "save" ? "СОХРАНЕНИЯ" : "ЗАГРУЗИТЬ ИГРУ";
-    k.drawText({ text: titleText, size: 36, pos: k.vec2(480, 60), anchor: "center", color: k.rgb(232, 226, 212) });
-    k.drawText({ text: mode === "save" ? "// выбери слот для записи" : "// выбери сохранение", size: 12, pos: k.vec2(480, 96), anchor: "center", color: k.rgb(154, 147, 132) });
+    k.drawText({ text: titleText, size: 42, pos: k.vec2(480, 56), anchor: "center", color: k.rgb(232, 226, 212) });
+    k.drawText({ text: mode === "save" ? "// выбери слот для записи" : "// выбери сохранение", size: 16, pos: k.vec2(480, 96), anchor: "center", color: k.rgb(154, 147, 132) });
 
     for (let i = 0; i < slots.length; i++) {
       const y = 150 + i * 110;
@@ -243,18 +251,18 @@ k.scene("saves", ({ mode = "load", returnTo = "menu" } = {}) => {
       // marker
       k.drawRect({ pos: k.vec2(80, y), width: 4, height: 90, color: k.rgb(slots[i] ? 194 : 80, slots[i] ? 32 : 30, slots[i] ? 42 : 36) });
 
-      k.drawText({ text: (selected ? "▸ " : "  ") + info.title, size: 18, pos: k.vec2(100, y + 18), color: selected ? k.rgb(255, 255, 255) : k.rgb(232, 226, 212) });
-      k.drawText({ text: info.sub, size: 12, pos: k.vec2(100, y + 50), color: k.rgb(154, 147, 132), width: 780 });
+      k.drawText({ text: (selected ? "▸ " : "  ") + info.title, size: 22, pos: k.vec2(100, y + 15), color: selected ? k.rgb(255, 255, 255) : k.rgb(232, 226, 212) });
+      k.drawText({ text: info.sub, size: 15, pos: k.vec2(100, y + 50), color: k.rgb(154, 147, 132), width: 740 });
 
       // hint
       if (selected) {
         const hint = slots[i]
           ? (mode === "save" ? "ENTER — перезаписать · DEL — удалить" : "ENTER — загрузить · DEL — удалить")
           : (mode === "save" ? "ENTER — сохранить сюда" : "слот пуст");
-        k.drawText({ text: hint, size: 11, pos: k.vec2(880, y + 70), anchor: "topright", color: k.rgb(98, 197, 255) });
+        k.drawText({ text: hint, size: 14, pos: k.vec2(880, y + 70), anchor: "topright", color: k.rgb(98, 197, 255) });
       }
     }
-    k.drawText({ text: "↑ ↓ выбор · ENTER подтвердить · DEL удалить · ESC назад", size: 11, pos: k.vec2(480, 562), anchor: "center", color: k.rgb(90, 84, 72) });
+    k.drawText({ text: "Стик: выбор · E/тап подтвердить · ☰ назад", size: 16, pos: k.vec2(480, 562), anchor: "center", color: k.rgb(90, 84, 72) });
   });
 
   function step(dir) {
@@ -291,6 +299,20 @@ k.scene("saves", ({ mode = "load", returnTo = "menu" } = {}) => {
       }
     }
   }
+
+  function confirmSlotAt(y) {
+    const hit = slots.findIndex((_slot, i) => y >= 150 + i * 110 && y <= 150 + i * 110 + 90);
+    if (hit < 0) return false;
+    sel = hit;
+    confirmSlot();
+    return true;
+  }
+  mobileSceneTouch = (_x, y) => confirmSlotAt(y);
+  mobileSceneBack = () => {
+    Aud.uiBack();
+    k.go(returnTo || "menu");
+    return true;
+  };
 
   k.onButtonPress("interact", confirmSlot);
   k.onUpdate(() => {

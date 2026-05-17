@@ -116,6 +116,8 @@ const mobileInput = {
   interactQueued: false,
   presses: { interact: 0, laptop: 0, menu: 0 }
 };
+let mobileSceneTouch = null;
+let mobileSceneBack = null;
 
 function queueMobilePress(which) {
   if (!mobileInput.presses[which] && mobileInput.presses[which] !== 0) mobileInput.presses[which] = 0;
@@ -208,6 +210,7 @@ function setupTouchHud() {
       queueMobilePress("laptop");
     } else if (which === "menu") {
       if (typeof dialogOpen !== "undefined" && dialogOpen && typeof clearDialog === "function") clearDialog();
+      else if (typeof mobileSceneBack === "function" && mobileSceneBack()) return;
       else if (typeof togglePause === "function") togglePause();
       queueMobilePress("menu");
     }
@@ -276,6 +279,23 @@ function setupTouchHud() {
         continue;
       }
 
+      if (typeof paused !== "undefined" && paused && typeof handlePauseTouch === "function") {
+        handlePauseTouch(p.x, p.y);
+        safePreventDefault(e);
+        continue;
+      }
+
+      if (typeof laptopOpen !== "undefined" && laptopOpen && typeof handleLaptopTouch === "function") {
+        handleLaptopTouch(p.x, p.y);
+        safePreventDefault(e);
+        continue;
+      }
+
+      if (typeof mobileSceneTouch === "function" && mobileSceneTouch(p.x, p.y)) {
+        safePreventDefault(e);
+        continue;
+      }
+
       // 2) dialog / cutscene / menu open → ANY remaining tap advances ("interact")
       if (isBlockedNow()) {
         pressButton("interact");
@@ -325,6 +345,8 @@ if (typeof k.go === "function" && !k._touchHudPatched) {
   k._touchHudPatched = true;
   const origGo = k.go.bind(k);
   k.go = function (name, ...rest) {
+    mobileSceneTouch = null;
+    mobileSceneBack = null;
     const r = origGo(name, ...rest);
     // give the new scene one frame to set up, then ensure our HUD exists
     if (isTouchDevice()) setTimeout(() => createTouchHudVisuals(), 0);

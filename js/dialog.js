@@ -5,8 +5,10 @@ let dialogOpen = false;
 let dialogObjs = [];
 let paused = false;
 let pauseObjs = [];
+let pauseTouchHandler = null;
 let laptopOpen = false;
 let laptopObjs = [];
+let laptopTouchHandler = null;
 let codePuzzleOpen = false;
 let activeCodePuzzle = null;
 let dialogReadyAt = 0;
@@ -56,22 +58,33 @@ function openPause() {
   let psel = 0;
 
   pauseObjs.push(k.add([k.rect(960, 600), k.color(0, 0, 0), k.opacity(0.7), k.pos(0, 0), k.fixed(), "pause"]));
-  pauseObjs.push(k.add([k.text("ПАУЗА", { size: 42 }), k.color(232, 226, 212), k.pos(480, 160), k.anchor("center"), k.fixed()]));
-  pauseObjs.push(k.add([k.text("// session paused — NEXAI ждёт", { size: 12 }), k.color(154, 147, 132), k.pos(480, 200), k.anchor("center"), k.fixed()]));
+  pauseObjs.push(k.add([k.text("ПАУЗА", { size: 48 }), k.color(232, 226, 212), k.pos(480, 132), k.anchor("center"), k.fixed()]));
+  pauseObjs.push(k.add([k.text("// session paused — NEXAI ждёт", { size: 16 }), k.color(154, 147, 132), k.pos(480, 172), k.anchor("center"), k.fixed()]));
 
   const labels = [];
   items.forEach((it, i) => {
-    const y = 280 + i * 50;
-    const bg = k.add([k.rect(360, 36), k.color(20, 22, 28), k.opacity(0.9), k.outline(1, k.rgb(120, 32, 36)), k.pos(300, y), k.area(), k.fixed(), "pause-btn", { _idx: i }]);
+    const y = 220 + i * 52;
+    const bg = k.add([k.rect(520, 42), k.color(20, 22, 28), k.opacity(0.9), k.outline(1, k.rgb(120, 32, 36)), k.pos(220, y), k.area(), k.fixed(), "pause-btn", { _idx: i, _action: it.action }]);
     bg.onClick(() => it.action());
-    const lbl = k.add([k.text(it.label, { size: 16 }), k.color(232, 226, 212), k.pos(480, y + 18), k.anchor("center"), k.fixed()]);
+    const lbl = k.add([k.text(it.label, { size: 19 }), k.color(232, 226, 212), k.pos(480, y + 21), k.anchor("center"), k.fixed()]);
     bg.onUpdate(() => {
       bg.color = i === psel ? k.rgb(60, 14, 18) : k.rgb(20, 22, 28);
     });
     labels.push({ bg, lbl });
     pauseObjs.push(bg, lbl);
   });
-  pauseObjs.push(k.add([k.text("↑↓ выбор · ENTER подтвердить · ESC закрыть", { size: 11 }), k.color(90, 84, 72), k.pos(480, 540), k.anchor("center"), k.fixed()]));
+  pauseObjs.push(k.add([k.text("Стик: выбор · E/тап: подтвердить · ☰ закрыть", { size: 15 }), k.color(90, 84, 72), k.pos(480, 570), k.anchor("center"), k.fixed()]));
+  pauseTouchHandler = (x, y) => {
+    const hit = k.get("pause-btn").find((b) => (
+      x >= b.pos.x && x <= b.pos.x + b.width
+      && y >= b.pos.y && y <= b.pos.y + b.height
+    ));
+    if (!hit) return false;
+    psel = hit._idx;
+    Aud.uiSelect();
+    hit._action();
+    return true;
+  };
 
   const onUp = k.onKeyPress("up", () => { psel = (psel - 1 + items.length) % items.length; Aud.uiBlip(); });
   const onDown = k.onKeyPress("down", () => { psel = (psel + 1) % items.length; Aud.uiBlip(); });
@@ -89,8 +102,13 @@ function openPause() {
 }
 function closePause() {
   paused = false;
+  pauseTouchHandler = null;
   pauseObjs.forEach((o) => { if (o.destroy) o.destroy(); });
   pauseObjs = [];
+}
+
+function handlePauseTouch(x, y) {
+  return !!(pauseTouchHandler && pauseTouchHandler(x, y));
 }
 
 // ---------------------------------------------------------------------
@@ -173,21 +191,21 @@ function openLaptop() {
 
   laptopObjs.push(k.add([k.rect(960, 600), k.color(0, 0, 0), k.opacity(0.72), k.pos(0, 0), k.fixed(), "laptop"]));
   laptopObjs.push(k.add([k.rect(620, 390), k.color(8, 10, 14), k.opacity(0.96), k.outline(2, k.rgb(98, 197, 255)), k.pos(170, 100), k.fixed()]));
-  laptopObjs.push(k.add([k.text("NEXCORE LAPTOP", { size: 28 }), k.color(98, 197, 255), k.pos(480, 138), k.anchor("center"), k.fixed()]));
-  laptopObjs.push(k.add([k.text("// local session · manual save", { size: 12 }), k.color(154, 147, 132), k.pos(480, 170), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("NEXCORE LAPTOP", { size: 34 }), k.color(98, 197, 255), k.pos(480, 134), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("// local session · manual save", { size: 16 }), k.color(154, 147, 132), k.pos(480, 174), k.anchor("center"), k.fixed()]));
 
   rows.forEach(([label, value], i) => {
     const y = 220 + i * 34;
-    laptopObjs.push(k.add([k.text(`${label}:`, { size: 13 }), k.color(255, 179, 71), k.pos(220, y), k.fixed()]));
-    laptopObjs.push(k.add([k.text(String(value), { size: 13, width: 420 }), k.color(232, 226, 212), k.pos(330, y), k.fixed()]));
+    laptopObjs.push(k.add([k.text(`${label}:`, { size: 16 }), k.color(255, 179, 71), k.pos(220, y), k.fixed()]));
+    laptopObjs.push(k.add([k.text(String(value), { size: 16, width: 420 }), k.color(232, 226, 212), k.pos(330, y), k.fixed()]));
   });
 
-  const saveBtn = k.add([k.rect(220, 38), k.color(20, 42, 52), k.outline(1, k.rgb(98, 197, 255)), k.pos(250, 400), k.area(), k.fixed(), "laptop-btn"]);
-  const closeBtn = k.add([k.rect(220, 38), k.color(42, 20, 24), k.outline(1, k.rgb(194, 32, 42)), k.pos(490, 400), k.area(), k.fixed(), "laptop-btn"]);
+  const saveBtn = k.add([k.rect(240, 48), k.color(20, 42, 52), k.outline(1, k.rgb(98, 197, 255)), k.pos(230, 392), k.area(), k.fixed(), "laptop-btn"]);
+  const closeBtn = k.add([k.rect(240, 48), k.color(42, 20, 24), k.outline(1, k.rgb(194, 32, 42)), k.pos(490, 392), k.area(), k.fixed(), "laptop-btn"]);
   laptopObjs.push(saveBtn, closeBtn);
-  laptopObjs.push(k.add([k.text("СОХРАНИТЬ", { size: 15 }), k.color(232, 226, 212), k.pos(360, 419), k.anchor("center"), k.fixed()]));
-  laptopObjs.push(k.add([k.text("ЗАКРЫТЬ", { size: 15 }), k.color(232, 226, 212), k.pos(600, 419), k.anchor("center"), k.fixed()]));
-  laptopObjs.push(k.add([k.text("T / ESC закрыть · сохранение запоминает текущую сцену, позицию и прогресс", { size: 11 }), k.color(90, 84, 72), k.pos(480, 462), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("СОХРАНИТЬ", { size: 18 }), k.color(232, 226, 212), k.pos(350, 416), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("ЗАКРЫТЬ", { size: 18 }), k.color(232, 226, 212), k.pos(610, 416), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("T / ESC закрыть · сохранение запоминает текущую сцену, позицию и прогресс", { size: 13, width: 620 }), k.color(90, 84, 72), k.pos(480, 462), k.anchor("center"), k.fixed()]));
 
   saveBtn.onClick(() => {
     Aud.save();
@@ -195,12 +213,32 @@ function openLaptop() {
     closeLaptop();
   });
   closeBtn.onClick(closeLaptop);
+  laptopTouchHandler = (x, y) => {
+    const hit = k.get("laptop-btn").find((b) => (
+      x >= b.pos.x && x <= b.pos.x + b.width
+      && y >= b.pos.y && y <= b.pos.y + b.height
+    ));
+    if (!hit) return false;
+    if (hit === saveBtn) {
+      Aud.save();
+      saveGame();
+      closeLaptop();
+    } else {
+      closeLaptop();
+    }
+    return true;
+  };
 }
 
 function closeLaptop() {
   laptopOpen = false;
+  laptopTouchHandler = null;
   laptopObjs.forEach((o) => { if (o.destroy) o.destroy(); });
   laptopObjs = [];
+}
+
+function handleLaptopTouch(x, y) {
+  return !!(laptopTouchHandler && laptopTouchHandler(x, y));
 }
 
 const codeTerminal = document.querySelector("#code-terminal");
@@ -378,8 +416,10 @@ function openDialog(speaker, line, choices, portraitOverride) {
   const useTwoCols = nChoices > 4;
   dialogChoiceCols = useTwoCols ? 2 : 1;
   const choiceRows = useTwoCols ? Math.ceil(nChoices / 2) : nChoices;
-  const choicesHeight = 8 + choiceRows * 34;
-  const boxH = 190;
+  const choiceStep = 42;
+  const choiceH = 38;
+  const choicesHeight = 10 + choiceRows * choiceStep;
+  const boxH = 220;
   const totalH = boxH + choicesHeight;
   const boxX = 30;
   const boxY = Math.max(40, 590 - totalH); // anchor to bottom but never overflow top bar
@@ -433,7 +473,7 @@ function openDialog(speaker, line, choices, portraitOverride) {
 
   // speaker name + separator
   dialogObjs.push(k.add([
-    k.text("▌ " + speaker, { size: 18 }),
+    k.text("▌ " + speaker, { size: 22 }),
     k.color(194, 32, 42),
     k.pos(textX, boxY + 16),
     k.fixed()
@@ -448,7 +488,7 @@ function openDialog(speaker, line, choices, portraitOverride) {
 
   // dialog text
   dialogObjs.push(k.add([
-    k.text(line, { size: 18, width: textW }),
+    k.text(line, { size: 22, width: textW }),
     k.color(248, 244, 232),
     k.pos(textX, boxY + 58),
     k.fixed()
@@ -460,9 +500,9 @@ function openDialog(speaker, line, choices, portraitOverride) {
     const col = useTwoCols ? (i % 2) : 0;
     const row = useTwoCols ? Math.floor(i / 2) : i;
     const btnX = boxX + col * (btnW + 4);
-    const btnY = boxY + boxH + 8 + row * 34;
+    const btnY = boxY + boxH + 10 + row * choiceStep;
     const btn = k.add([
-      k.rect(btnW, 30),
+      k.rect(btnW, choiceH),
       k.color(20, 24, 30),
       k.opacity(0.95),
       k.outline(1, k.rgb(120, 32, 36)),
@@ -474,12 +514,12 @@ function openDialog(speaker, line, choices, portraitOverride) {
     ]);
     // truncate long labels in two-col mode so they fit
     const labelText = "  " + (i + 1) + ". " + c.text;
-    const maxLen = useTwoCols ? 56 : 200;
+    const maxLen = useTwoCols ? 48 : 150;
     const shown = labelText.length > maxLen ? labelText.slice(0, maxLen - 1) + "…" : labelText;
     const lbl = k.add([
-      k.text(shown, { size: 14 }),
+      k.text(shown, { size: 17 }),
       k.color(248, 244, 232),
-      k.pos(btnX + 12, btnY + 8),
+      k.pos(btnX + 14, btnY + 10),
       k.fixed()
     ]);
     btn.onUpdate(() => {
