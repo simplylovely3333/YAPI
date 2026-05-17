@@ -57,6 +57,19 @@ function tryLockLandscape() {
   }
 }
 
+function requestMobileFullscreen() {
+  if (!isTouchDevice()) return;
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) {
+    try {
+      const r = req.call(el);
+      if (r && typeof r.catch === "function") r.catch(() => {});
+    } catch { /* fullscreen is best-effort on mobile browsers */ }
+  }
+}
+
 function updateRotatePrompt() {
   const prompt = document.getElementById("rotate-prompt");
   if (!prompt) return;
@@ -72,11 +85,7 @@ updateRotatePrompt();
 // Attempt orientation lock after the first user gesture (browsers require it).
 function onFirstGesture() {
   if (isTouchDevice()) tryLockLandscape();
-  // also try to go fullscreen on touch — Android browsers allow lock() only in fullscreen
-  const el = document.documentElement;
-  if (isTouchDevice() && el.requestFullscreen && !document.fullscreenElement) {
-    el.requestFullscreen().catch(() => {});
-  }
+  requestMobileFullscreen();
   window.removeEventListener("touchstart", onFirstGesture);
   window.removeEventListener("click", onFirstGesture);
 }
@@ -246,6 +255,8 @@ function setupTouchHud() {
   }
 
   canvas.addEventListener("touchstart", (e) => {
+    requestMobileFullscreen();
+    tryLockLandscape();
     for (const t of e.changedTouches) {
       const p = toGame(t);
 
@@ -253,6 +264,14 @@ function setupTouchHud() {
       const which = buttonHit(p);
       if (which) {
         pressButton(which);
+        safePreventDefault(e);
+        continue;
+      }
+
+      // Dialogs have multiple answers: tap the exact answer row instead of
+      // blindly confirming the currently selected first option.
+      if (typeof dialogOpen !== "undefined" && dialogOpen) {
+        if (typeof handleDialogTouch === "function") handleDialogTouch(p.x, p.y);
         safePreventDefault(e);
         continue;
       }

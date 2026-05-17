@@ -303,16 +303,31 @@ function humanoid(opts = {}) {
       // per-frame: switch direction + anim based on face/walking
       let curKey = want("down");
       let curAnim = "idle";
+      function applySpriteState(key, anim) {
+        if (key !== curKey) {
+          try {
+            spr.use(k.sprite(key));
+            curKey = key;
+            curAnim = "";
+          } catch (e) {
+            return;
+          }
+        }
+        if (anim === "walk") {
+          if (curAnim !== "walk") {
+            try { spr.play("walk", { loop: true }); } catch (e) { /* ignore */ }
+            curAnim = "walk";
+          }
+        } else if (curAnim !== "idle") {
+          try { if (typeof spr.stop === "function") spr.stop(); } catch (e) { /* ignore */ }
+          try { if ("frame" in spr) spr.frame = 0; } catch (e) { /* ignore */ }
+          curAnim = "idle";
+        }
+      }
       root.onUpdate(() => {
         const targetKey = want(root.face || "down");
         const targetAnim = root.walking ? "walk" : "idle";
-        if (targetKey !== curKey) {
-          try { spr.use(k.sprite(targetKey, { anim: targetAnim })); curKey = targetKey; curAnim = targetAnim; }
-          catch (e) { /* keep current */ }
-        } else if (targetAnim !== curAnim) {
-          try { spr.play(targetAnim, { loop: targetAnim === "walk" }); curAnim = targetAnim; }
-          catch (e) { /* ignore */ }
-        }
+        applySpriteState(targetKey, targetAnim);
       });
       return root;
     }

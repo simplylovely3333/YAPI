@@ -529,6 +529,20 @@ function confirmDialogSelection() {
   if (btn) btn._action();
 }
 
+function handleDialogTouch(x, y) {
+  if (!dialogOpen || k.time() < dialogReadyAt) return false;
+  const btns = k.get("dialog-btn");
+  const hit = btns.find((b) => (
+    x >= b.pos.x && x <= b.pos.x + b.width
+    && y >= b.pos.y && y <= b.pos.y + b.height
+  ));
+  if (!hit) return false;
+  btns.forEach((b) => { b._selected = b === hit; });
+  Aud.uiSelect();
+  hit._action();
+  return true;
+}
+
 k.onKeyPress("up", () => { if (dialogOpen) moveDialogSelection(0, -1); });
 k.onKeyPress("down", () => { if (dialogOpen) moveDialogSelection(0, 1); });
 k.onKeyPress("left", () => { if (dialogOpen) moveDialogSelection(-1, 0); });
