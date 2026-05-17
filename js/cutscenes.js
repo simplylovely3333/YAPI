@@ -180,11 +180,22 @@ k.scene("menu", () => {
     do { sel = (sel + dir + items.length) % items.length; } while (items[sel].disabled);
     Aud.uiBlip();
   }
+  function confirm() {
+    if (!items[sel].disabled) items[sel].action();
+  }
+  let nextMobileNavAt = 0;
   k.onKeyPress("up", () => step(-1));
   k.onKeyPress("w", () => step(-1));
   k.onKeyPress("down", () => step(1));
   k.onKeyPress("s", () => step(1));
-  k.onButtonPress("interact", () => { if (!items[sel].disabled) items[sel].action(); });
+  k.onButtonPress("interact", confirm);
+  k.onUpdate(() => {
+    if (typeof takeMobilePress === "function" && takeMobilePress("interact")) confirm();
+    if (typeof mobileInput !== "undefined" && Math.abs(mobileInput.y) > 0.55 && k.time() >= nextMobileNavAt) {
+      step(mobileInput.y > 0 ? 1 : -1);
+      nextMobileNavAt = k.time() + 0.22;
+    }
+  });
 });
 
 // =====================================================================
@@ -250,12 +261,13 @@ k.scene("saves", ({ mode = "load", returnTo = "menu" } = {}) => {
     sel = (sel + dir + slots.length) % slots.length;
     Aud.uiBlip();
   }
+  let nextMobileNavAt = 0;
   k.onKeyPress("up", () => step(-1));
   k.onKeyPress("w", () => step(-1));
   k.onKeyPress("down", () => step(1));
   k.onKeyPress("s", () => step(1));
 
-  k.onButtonPress("interact", () => {
+  function confirmSlot() {
     if (mode === "load") {
       if (!slots[sel]) { Aud.uiBack(); return; }
       Aud.uiSelect();
@@ -277,6 +289,15 @@ k.scene("saves", ({ mode = "load", returnTo = "menu" } = {}) => {
         Aud.save();
         k.go(returnTo === "menu" ? "menu" : state.scene);
       }
+    }
+  }
+
+  k.onButtonPress("interact", confirmSlot);
+  k.onUpdate(() => {
+    if (typeof takeMobilePress === "function" && takeMobilePress("interact")) confirmSlot();
+    if (typeof mobileInput !== "undefined" && Math.abs(mobileInput.y) > 0.55 && k.time() >= nextMobileNavAt) {
+      step(mobileInput.y > 0 ? 1 : -1);
+      nextMobileNavAt = k.time() + 0.22;
     }
   });
 
@@ -367,7 +388,7 @@ k.scene("cutscene", ({ frames, onEnd }) => {
     }
   });
 
-  k.onButtonPress("interact", () => {
+  function advanceCutscene() {
     const f = frames[idx];
     if (!f) return;
     if (typed < f.line.length) { typed = f.line.length; return; }
@@ -379,6 +400,11 @@ k.scene("cutscene", ({ frames, onEnd }) => {
     } else {
       frameEnter(idx);
     }
+  }
+
+  k.onButtonPress("interact", advanceCutscene);
+  k.onUpdate(() => {
+    if (typeof takeMobilePress === "function" && takeMobilePress("interact")) advanceCutscene();
   });
   k.onKeyPress("escape", () => k.go("menu"));
 });

@@ -76,7 +76,16 @@ function openPause() {
   const onUp = k.onKeyPress("up", () => { psel = (psel - 1 + items.length) % items.length; Aud.uiBlip(); });
   const onDown = k.onKeyPress("down", () => { psel = (psel + 1) % items.length; Aud.uiBlip(); });
   const onConfirm = k.onButtonPress("interact", () => { if (paused) items[psel].action(); });
-  pauseObjs.push({ destroy: () => { onUp.cancel(); onDown.cancel(); onConfirm.cancel(); } });
+  let nextMobileNavAt = 0;
+  const onTouchConfirm = k.onUpdate(() => {
+    if (paused && typeof takeMobilePress === "function" && takeMobilePress("interact")) items[psel].action();
+    if (paused && typeof mobileInput !== "undefined" && Math.abs(mobileInput.y) > 0.55 && k.time() >= nextMobileNavAt) {
+      psel = (psel + (mobileInput.y > 0 ? 1 : -1) + items.length) % items.length;
+      nextMobileNavAt = k.time() + 0.22;
+      Aud.uiBlip();
+    }
+  });
+  pauseObjs.push({ destroy: () => { onUp.cancel(); onDown.cancel(); onConfirm.cancel(); onTouchConfirm.cancel(); } });
 }
 function closePause() {
   paused = false;
@@ -137,10 +146,13 @@ function openTrustReport() {
                    : surv >= 10 ? "NEXAI поглядывает"
                    : "NEXAI пока тебя не выделяет";
   trustReportObjs.push(k.add([k.text("// " + survLabel, { size: 12 }), k.color(194, 32, 42), k.opacity(0.9), k.pos(480, 470), k.anchor("center"), k.fixed()]));
-  trustReportObjs.push(k.add([k.text("ESC — закрыть", { size: 11 }), k.color(154, 147, 132), k.pos(480, 562), k.anchor("center"), k.fixed()]));
+  trustReportObjs.push(k.add([k.text("ESC / E — закрыть", { size: 11 }), k.color(154, 147, 132), k.pos(480, 562), k.anchor("center"), k.fixed()]));
 
   const onClose = k.onKeyPress("escape", () => { closeTrustReport(); onClose.cancel(); });
-  trustReportObjs.push({ destroy: () => onClose.cancel() });
+  const onTouchClose = k.onUpdate(() => {
+    if (paused && typeof takeMobilePress === "function" && takeMobilePress("interact")) closeTrustReport();
+  });
+  trustReportObjs.push({ destroy: () => { onClose.cancel(); onTouchClose.cancel(); } });
 }
 
 function toggleLaptop() {
@@ -529,3 +541,15 @@ for (let i = 1; i <= 9; i++) {
   k.onKeyPress(String(i), () => { if (dialogOpen) chooseDialogNumber(i); });
 }
 k.onButtonPress("interact", () => { if (dialogOpen) confirmDialogSelection(); });
+let nextDialogMobileNavAt = 0;
+k.onUpdate(() => {
+  if (!dialogOpen || typeof mobileInput === "undefined") return;
+  if (k.time() < nextDialogMobileNavAt) return;
+  if (Math.abs(mobileInput.y) > 0.55) {
+    moveDialogSelection(0, mobileInput.y > 0 ? 1 : -1);
+    nextDialogMobileNavAt = k.time() + 0.22;
+  } else if (Math.abs(mobileInput.x) > 0.55) {
+    moveDialogSelection(mobileInput.x > 0 ? 1 : -1, 0);
+    nextDialogMobileNavAt = k.time() + 0.22;
+  }
+});

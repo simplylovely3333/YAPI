@@ -101,7 +101,23 @@ const k = kaplay({
 });
 
 let gameHud = null;
-const mobileInput = { x: 0, y: 0, interactQueued: false };
+const mobileInput = {
+  x: 0,
+  y: 0,
+  interactQueued: false,
+  presses: { interact: 0, laptop: 0, menu: 0 }
+};
+
+function queueMobilePress(which) {
+  if (!mobileInput.presses[which] && mobileInput.presses[which] !== 0) mobileInput.presses[which] = 0;
+  mobileInput.presses[which]++;
+}
+
+function takeMobilePress(which) {
+  if (!mobileInput.presses || !mobileInput.presses[which]) return false;
+  mobileInput.presses[which]--;
+  return true;
+}
 
 // =====================================================================
 // IN-CANVAS TOUCH HUD — joystick + 3 buttons drawn as kaplay objects.
@@ -164,32 +180,27 @@ function setupTouchHud() {
     if (inCircle(p, BTN_MENU))     return "menu";
     return null;
   }
-
-  // Touch button → synthetic keyboard event.
-  // This way kaplay's `k.onButtonPress("interact")` (used in cutscenes, menu,
-  // saves, dialogs, and gameplay alike) fires identically to a physical key.
-  function dispatchKey(key, code) {
-    const opts = { key, code: code || key, bubbles: true, cancelable: true };
-    document.dispatchEvent(new KeyboardEvent("keydown", opts));
-    setTimeout(() => document.dispatchEvent(new KeyboardEvent("keyup", opts)), 40);
+  function hasPlayerInScene() {
+    try { return typeof k.get === "function" && k.get("player").length > 0; }
+    catch { return false; }
   }
 
   function pressButton(which) {
     Aud.uiBlip && Aud.uiBlip();
     if (which === "interact") {
-      // belt-and-braces: try direct DOM handlers first, then synthesise an "e"
       if (typeof dialogOpen !== "undefined" && dialogOpen && typeof confirmDialogSelection === "function") {
         confirmDialogSelection();
+        return;
       }
-      mobileInput.interactQueued = true;
-      dispatchKey("e", "KeyE");
+      queueMobilePress("interact");
+      if (hasPlayerInScene() && !isBlockedNow()) mobileInput.interactQueued = true;
     } else if (which === "laptop") {
       if (typeof toggleLaptop === "function") toggleLaptop();
-      dispatchKey("t", "KeyT");
+      queueMobilePress("laptop");
     } else if (which === "menu") {
       if (typeof dialogOpen !== "undefined" && dialogOpen && typeof clearDialog === "function") clearDialog();
       else if (typeof togglePause === "function") togglePause();
-      dispatchKey("Escape", "Escape");
+      queueMobilePress("menu");
     }
   }
 
@@ -248,8 +259,7 @@ function setupTouchHud() {
 
       // 2) dialog / cutscene / menu open → ANY remaining tap advances ("interact")
       if (isBlockedNow()) {
-        Aud.uiBlip && Aud.uiBlip();
-        dispatchKey("e", "KeyE");
+        pressButton("interact");
         safePreventDefault(e);
         continue;
       }
@@ -263,9 +273,7 @@ function setupTouchHud() {
       }
 
       // 4) free tap in the play area → also count as "interact"
-      Aud.uiBlip && Aud.uiBlip();
-      dispatchKey("e", "KeyE");
-      mobileInput.interactQueued = true;
+      pressButton("interact");
       safePreventDefault(e);
     }
   }, { passive: false });
