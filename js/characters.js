@@ -12,6 +12,9 @@ const SPRITE_DIRS = ["down", "left", "right", "up"];
 let spritesReady = false;
 
 (function loadOfficeAtlas() {
+  // Sprite loading is best-effort: under file:// the browser blocks the PNG
+  // (CORS), so we silently fall back to procedural rendering. Same fallback
+  // is used if a serve-side asset is missing.
   try {
     const atlas = {};
     SPRITE_CHARS.forEach((name, ci) => {
@@ -30,10 +33,13 @@ let spritesReady = false;
         };
       });
     });
-    k.loadSpriteAtlas("assets/sprites/office_characters.png", atlas);
+    const p = k.loadSpriteAtlas("assets/sprites/office_characters.png", atlas);
     spritesReady = true;
+    // attach a rejection handler so the unhandled-promise console error goes away
+    if (p && typeof p.catch === "function") {
+      p.catch(() => { spritesReady = false; });
+    }
   } catch (e) {
-    console.warn("sprite atlas load failed, falling back to procedural", e);
     spritesReady = false;
   }
 })();

@@ -30,14 +30,10 @@ function ensureGameShell() {
         </div>
       </section>
 
-      <section class="mobile-controls" id="mobile-controls" aria-label="Мобильное управление">
-        <div class="mobile-joystick" id="mobile-joystick" aria-label="Джойстик движения">
-          <div class="mobile-stick" id="mobile-stick"></div>
-        </div>
-        <div class="mobile-actions">
-          <button type="button" class="mobile-btn mobile-btn-small" id="mobile-menu" aria-label="Меню">☰</button>
-          <button type="button" class="mobile-btn mobile-btn-small" id="mobile-laptop" aria-label="Ноутбук">T</button>
-          <button type="button" class="mobile-btn mobile-btn-main" id="mobile-interact" aria-label="Действие">E</button>
+      <section class="rotate-prompt" id="rotate-prompt" aria-hidden="true">
+        <div class="rotate-prompt-inner">
+          <div class="rotate-icon">⟲</div>
+          <p>Поверни телефон<br>горизонтально</p>
         </div>
       </section>
     </main>
@@ -45,6 +41,47 @@ function ensureGameShell() {
 }
 
 ensureGameShell();
+
+// =====================================================================
+// MOBILE ORIENTATION — lock to landscape, show prompt if portrait.
+// =====================================================================
+function isTouchDevice() {
+  return (window.matchMedia && window.matchMedia("(hover: none), (pointer: coarse)").matches)
+      || ("ontouchstart" in window);
+}
+
+function tryLockLandscape() {
+  // Screen Orientation API — works inside a fullscreen context on Android.
+  if (screen.orientation && typeof screen.orientation.lock === "function") {
+    screen.orientation.lock("landscape").catch(() => { /* ignore — needs fullscreen on iOS / unsupported on Safari */ });
+  }
+}
+
+function updateRotatePrompt() {
+  const prompt = document.getElementById("rotate-prompt");
+  if (!prompt) return;
+  const portrait = window.innerHeight > window.innerWidth;
+  const touch = isTouchDevice();
+  prompt.classList.toggle("show", touch && portrait);
+}
+
+window.addEventListener("resize", updateRotatePrompt);
+window.addEventListener("orientationchange", updateRotatePrompt);
+updateRotatePrompt();
+
+// Attempt orientation lock after the first user gesture (browsers require it).
+function onFirstGesture() {
+  if (isTouchDevice()) tryLockLandscape();
+  // also try to go fullscreen on touch — Android browsers allow lock() only in fullscreen
+  const el = document.documentElement;
+  if (isTouchDevice() && el.requestFullscreen && !document.fullscreenElement) {
+    el.requestFullscreen().catch(() => {});
+  }
+  window.removeEventListener("touchstart", onFirstGesture);
+  window.removeEventListener("click", onFirstGesture);
+}
+window.addEventListener("touchstart", onFirstGesture, { once: false });
+window.addEventListener("click", onFirstGesture, { once: false });
 
 const k = kaplay({
   width: 960,
@@ -66,78 +103,207 @@ const k = kaplay({
 let gameHud = null;
 const mobileInput = { x: 0, y: 0, interactQueued: false };
 
-function setupMobileControls() {
-  const root = document.querySelector("#mobile-controls");
-  const pad = document.querySelector("#mobile-joystick");
-  const stick = document.querySelector("#mobile-stick");
-  const interact = document.querySelector("#mobile-interact");
-  const laptop = document.querySelector("#mobile-laptop");
-  const menu = document.querySelector("#mobile-menu");
-  if (!root || !pad || !stick || !interact || !laptop || !menu) return;
+// =====================================================================
+// IN-CANVAS TOUCH HUD — joystick + 3 buttons drawn as kaplay objects.
+// Lives in game coordinates (960×600), so it scales with the canvas and
+// is automatically rotated with the game when device is landscape.
+// =====================================================================
 
-  let activePointer = null;
-  const clampStick = (event) => {
-    const rect = pad.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const max = rect.width * 0.34;
-    let dx = event.clientX - cx;
-    let dy = event.clientY - cy;
-    const dist = Math.hypot(dx, dy);
-    if (dist > max) {
-      dx = (dx / dist) * max;
-      dy = (dy / dist) * max;
-    }
-    mobileInput.x = Math.abs(dx) < 5 ? 0 : dx / max;
-    mobileInput.y = Math.abs(dy) < 5 ? 0 : dy / max;
-    stick.style.transform = `translate(${dx}px, ${dy}px)`;
-  };
-  const releaseStick = () => {
-    activePointer = null;
-    mobileInput.x = 0;
-    mobileInput.y = 0;
-    stick.style.transform = "translate(0, 0)";
-  };
+// game-coord layout (960×600)
+const JOY = { cx: 130, cy: 470, r: 70, stickR: 28 };
+const BTN_INTERACT = { cx: 838, cy: 470, r: 54, label: "E" };
+const BTN_LAPTOP   = { cx: 740, cy: 392, r: 32, label: "T" };
+const BTN_MENU     = { cx: 836, cy: 372, r: 32, label: "☰" };
 
-  pad.addEventListener("pointerdown", (event) => {
-    activePointer = event.pointerId;
-    pad.setPointerCapture?.(event.pointerId);
-    clampStick(event);
-    event.preventDefault();
+const joyTouch = { id: null, dx: 0, dy: 0 };
+let touchHudListenersAttached = false;
+
+// Per-scene visuals: re-added every time createGameHUD runs (world.js:17).
+function createTouchHudVisuals() {
+  if (!isTouchDevice()) return;
+  // tag "game-hud" so refreshGameHUD destroys these alongside the rest of HUD.
+  const layer = k.add([k.pos(0, 0), k.fixed(), k.z(995), "game-hud", "touch-hud"]);
+
+  layer.add([k.circle(JOY.r), k.color(5, 7, 10), k.opacity(0.55), k.pos(JOY.cx, JOY.cy), k.anchor("center")]);
+  layer.add([k.circle(JOY.r), k.color(98, 197, 255), k.opacity(0.2), k.outline(2, k.rgb(98, 197, 255)), k.pos(JOY.cx, JOY.cy), k.anchor("center")]);
+  const stick = layer.add([k.circle(JOY.stickR), k.color(12, 22, 34), k.outline(2, k.rgb(98, 197, 255)), k.pos(JOY.cx, JOY.cy), k.anchor("center"), "touch-stick"]);
+  stick.onUpdate(() => {
+    stick.pos.x = JOY.cx + joyTouch.dx;
+    stick.pos.y = JOY.cy + joyTouch.dy;
   });
-  pad.addEventListener("pointermove", (event) => {
-    if (activePointer !== event.pointerId) return;
-    clampStick(event);
-    event.preventDefault();
-  });
-  pad.addEventListener("pointerup", releaseStick);
-  pad.addEventListener("pointercancel", releaseStick);
 
-  const pressAction = (event, action) => {
-    event.preventDefault();
-    Aud.uiBlip?.();
-    action();
-  };
-  interact.addEventListener("pointerdown", (event) => pressAction(event, () => {
-    if (typeof dialogOpen !== "undefined" && dialogOpen && typeof confirmDialogSelection === "function") {
-      confirmDialogSelection();
-      return;
-    }
-    mobileInput.interactQueued = true;
-  }));
-  laptop.addEventListener("pointerdown", (event) => pressAction(event, () => {
-    if (typeof toggleLaptop === "function") toggleLaptop();
-  }));
-  menu.addEventListener("pointerdown", (event) => pressAction(event, () => {
-    if (typeof dialogOpen !== "undefined" && dialogOpen && typeof clearDialog === "function") {
-      clearDialog();
-      return;
-    }
-    if (typeof togglePause === "function") togglePause();
-  }));
+  function btn(spec, color) {
+    layer.add([k.circle(spec.r), k.color(8, 10, 14), k.opacity(0.75), k.pos(spec.cx, spec.cy), k.anchor("center")]);
+    layer.add([k.circle(spec.r), k.color(color[0], color[1], color[2]), k.opacity(0.18), k.outline(2, k.rgb(color[0], color[1], color[2])), k.pos(spec.cx, spec.cy), k.anchor("center")]);
+    layer.add([k.text(spec.label, { size: spec.r > 40 ? 26 : 18 }), k.color(248, 244, 232), k.pos(spec.cx, spec.cy), k.anchor("center")]);
+  }
+  btn(BTN_INTERACT, [194, 32, 42]);
+  btn(BTN_LAPTOP,   [255, 179, 71]);
+  btn(BTN_MENU,     [232, 226, 212]);
 }
 
-setupMobileControls();
+// Canvas-level touch listeners: attached once, survive scene transitions.
+function setupTouchHud() {
+  if (!isTouchDevice()) return;
+  if (touchHudListenersAttached) return;
+  const canvas = document.querySelector("#game canvas");
+  if (!canvas) return;
+  touchHudListenersAttached = true;
+
+  function toGame(touch) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = (touch.clientX - rect.left) / rect.width;
+    const sy = (touch.clientY - rect.top) / rect.height;
+    return { x: sx * 960, y: sy * 600 };
+  }
+  function inCircle(p, c) { return (p.x - c.cx) ** 2 + (p.y - c.cy) ** 2 <= c.r ** 2; }
+
+  function buttonHit(p) {
+    if (inCircle(p, BTN_INTERACT)) return "interact";
+    if (inCircle(p, BTN_LAPTOP))   return "laptop";
+    if (inCircle(p, BTN_MENU))     return "menu";
+    return null;
+  }
+
+  // Touch button → synthetic keyboard event.
+  // This way kaplay's `k.onButtonPress("interact")` (used in cutscenes, menu,
+  // saves, dialogs, and gameplay alike) fires identically to a physical key.
+  function dispatchKey(key, code) {
+    const opts = { key, code: code || key, bubbles: true, cancelable: true };
+    document.dispatchEvent(new KeyboardEvent("keydown", opts));
+    setTimeout(() => document.dispatchEvent(new KeyboardEvent("keyup", opts)), 40);
+  }
+
+  function pressButton(which) {
+    Aud.uiBlip && Aud.uiBlip();
+    if (which === "interact") {
+      // belt-and-braces: try direct DOM handlers first, then synthesise an "e"
+      if (typeof dialogOpen !== "undefined" && dialogOpen && typeof confirmDialogSelection === "function") {
+        confirmDialogSelection();
+      }
+      mobileInput.interactQueued = true;
+      dispatchKey("e", "KeyE");
+    } else if (which === "laptop") {
+      if (typeof toggleLaptop === "function") toggleLaptop();
+      dispatchKey("t", "KeyT");
+    } else if (which === "menu") {
+      if (typeof dialogOpen !== "undefined" && dialogOpen && typeof clearDialog === "function") clearDialog();
+      else if (typeof togglePause === "function") togglePause();
+      dispatchKey("Escape", "Escape");
+    }
+  }
+
+  function updateJoy(p) {
+    let dx = p.x - JOY.cx;
+    let dy = p.y - JOY.cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > JOY.r) { dx = dx / dist * JOY.r; dy = dy / dist * JOY.r; }
+    joyTouch.dx = dx;
+    joyTouch.dy = dy;
+    mobileInput.x = Math.abs(dx) < 6 ? 0 : dx / JOY.r;
+    mobileInput.y = Math.abs(dy) < 6 ? 0 : dy / JOY.r;
+  }
+  function releaseJoy() {
+    joyTouch.id = null;
+    joyTouch.dx = 0;
+    joyTouch.dy = 0;
+    mobileInput.x = 0;
+    mobileInput.y = 0;
+  }
+
+  function safePreventDefault(e) {
+    if (e.cancelable) {
+      try { e.preventDefault(); } catch { /* ignore intervention */ }
+    }
+  }
+
+  // active joystick zone: visible circle + moderate buffer (not the whole left half),
+  // so other parts of the canvas are free for "tap to interact".
+  const JOY_TOUCH_R = JOY.r + 60;
+  function inJoyZone(p) {
+    return (p.x - JOY.cx) ** 2 + (p.y - JOY.cy) ** 2 <= JOY_TOUCH_R ** 2;
+  }
+  function isBlockedNow() {
+    // best-effort — these globals live in dialog.js
+    if (typeof isInputBlocked === "function") {
+      try { return isInputBlocked(); } catch { /* */ }
+    }
+    return (typeof dialogOpen !== "undefined" && dialogOpen)
+        || (typeof laptopOpen !== "undefined" && laptopOpen)
+        || (typeof codePuzzleOpen !== "undefined" && codePuzzleOpen)
+        || (typeof paused !== "undefined" && paused);
+  }
+
+  canvas.addEventListener("touchstart", (e) => {
+    for (const t of e.changedTouches) {
+      const p = toGame(t);
+
+      // 1) hit on a control button — always wins
+      const which = buttonHit(p);
+      if (which) {
+        pressButton(which);
+        safePreventDefault(e);
+        continue;
+      }
+
+      // 2) dialog / cutscene / menu open → ANY remaining tap advances ("interact")
+      if (isBlockedNow()) {
+        Aud.uiBlip && Aud.uiBlip();
+        dispatchKey("e", "KeyE");
+        safePreventDefault(e);
+        continue;
+      }
+
+      // 3) joystick zone (only when nothing modal is up)
+      if (joyTouch.id == null && inJoyZone(p)) {
+        joyTouch.id = t.identifier;
+        updateJoy(p);
+        safePreventDefault(e);
+        continue;
+      }
+
+      // 4) free tap in the play area → also count as "interact"
+      Aud.uiBlip && Aud.uiBlip();
+      dispatchKey("e", "KeyE");
+      mobileInput.interactQueued = true;
+      safePreventDefault(e);
+    }
+  }, { passive: false });
+
+  canvas.addEventListener("touchmove", (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyTouch.id) {
+        updateJoy(toGame(t));
+        safePreventDefault(e);
+      }
+    }
+  }, { passive: false });
+
+  function endTouch(e) {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyTouch.id) releaseJoy();
+    }
+  }
+  canvas.addEventListener("touchend", endTouch);
+  canvas.addEventListener("touchcancel", endTouch);
+}
+
+// initialise once kaplay has actually mounted its canvas
+setTimeout(setupTouchHud, 0);
+
+// Re-create touch HUD visuals on every scene by hooking into k.go.
+// Cutscenes / menu / saves don't use roomFloor, so without this they'd
+// lose the touch buttons after a scene transition.
+if (typeof k.go === "function" && !k._touchHudPatched) {
+  k._touchHudPatched = true;
+  const origGo = k.go.bind(k);
+  k.go = function (name, ...rest) {
+    const r = origGo(name, ...rest);
+    // give the new scene one frame to set up, then ensure our HUD exists
+    if (isTouchDevice()) setTimeout(() => createTouchHudVisuals(), 0);
+    return r;
+  };
+}
 
 // =====================================================================
 // QUESTS — Act 3 task list

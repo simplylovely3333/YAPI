@@ -15,6 +15,7 @@ function roomFloor(palette) {
   for (let x = 0; x < 960; x += TILE) k.add([k.rect(1, 600), k.color(255, 255, 255), k.opacity(0.05), k.pos(x, 0), k.fixed()]);
   for (let y = 0; y < 600; y += TILE) k.add([k.rect(960, 1), k.color(255, 255, 255), k.opacity(0.05), k.pos(0, y), k.fixed()]);
   createGameHUD();
+  if (typeof createTouchHudVisuals === "function") createTouchHudVisuals();
 }
 
 function wall(x, y, w, h, color = [90, 100, 120]) {
