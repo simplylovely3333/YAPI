@@ -73,7 +73,7 @@ function openPause() {
     labels.push({ bg, lbl });
     pauseObjs.push(bg, lbl);
   });
-  pauseObjs.push(k.add([k.text("Стик: выбор · E/тап: подтвердить · ☰ закрыть", { size: 15 }), k.color(90, 84, 72), k.pos(480, 570), k.anchor("center"), k.fixed()]));
+  pauseObjs.push(k.add([k.text("Стик: выбор · E/тап: подтвердить · ☰ закрыть", { size: 18 }), k.color(90, 84, 72), k.pos(480, 570), k.anchor("center"), k.fixed()]));
   pauseTouchHandler = (x, y) => {
     const hit = k.get("pause-btn").find((b) => (
       x >= b.pos.x && x <= b.pos.x + b.width
@@ -125,8 +125,8 @@ function closeTrustReport() {
 function openTrustReport() {
   paused = true;
   trustReportObjs.push(k.add([k.rect(960, 600), k.color(0, 0, 0), k.opacity(0.85), k.pos(0, 0), k.fixed(), "trust-report"]));
-  trustReportObjs.push(k.add([k.text("ОТНОШЕНИЯ", { size: 32 }), k.color(232, 226, 212), k.pos(480, 60), k.anchor("center"), k.fixed()]));
-  trustReportObjs.push(k.add([k.text("// невидимая шкала. цифр нет — есть ощущение.", { size: 11 }), k.color(154, 147, 132), k.pos(480, 96), k.anchor("center"), k.fixed()]));
+  trustReportObjs.push(k.add([k.text("ОТНОШЕНИЯ", { size: 40 }), k.color(232, 226, 212), k.pos(480, 54), k.anchor("center"), k.fixed()]));
+  trustReportObjs.push(k.add([k.text("// невидимая шкала. цифр нет — есть ощущение.", { size: 16 }), k.color(154, 147, 132), k.pos(480, 96), k.anchor("center"), k.fixed()]));
 
   const names = {
     timur: "ТИМУР · менеджер",
@@ -149,8 +149,8 @@ function openTrustReport() {
     const t = getTrust(key);
     const d = describe(t);
     trustReportObjs.push(k.add([k.rect(800, 50), k.color(15, 17, 22), k.opacity(0.95), k.outline(1, k.rgb(80, 30, 36)), k.pos(80, y), k.fixed()]));
-    trustReportObjs.push(k.add([k.text(names[key] || key, { size: 14 }), k.color(232, 226, 212), k.pos(100, y + 8), k.fixed()]));
-    trustReportObjs.push(k.add([k.text(d.txt, { size: 14 }), k.color(d.col[0], d.col[1], d.col[2]), k.pos(100, y + 28), k.fixed()]));
+    trustReportObjs.push(k.add([k.text(names[key] || key, { size: 18 }), k.color(232, 226, 212), k.pos(100, y + 6), k.fixed()]));
+    trustReportObjs.push(k.add([k.text(d.txt, { size: 18 }), k.color(d.col[0], d.col[1], d.col[2]), k.pos(100, y + 30), k.fixed()]));
     // hidden bar on the right (a vague indicator, no number)
     const barW = Math.max(8, Math.floor(t * 2.4));
     trustReportObjs.push(k.add([k.rect(240, 6), k.color(40, 30, 36), k.pos(620, y + 22), k.fixed()]));
@@ -163,8 +163,8 @@ function openTrustReport() {
                    : surv >= 30 ? "ты у NEXAI в списке"
                    : surv >= 10 ? "NEXAI поглядывает"
                    : "NEXAI пока тебя не выделяет";
-  trustReportObjs.push(k.add([k.text("// " + survLabel, { size: 12 }), k.color(194, 32, 42), k.opacity(0.9), k.pos(480, 470), k.anchor("center"), k.fixed()]));
-  trustReportObjs.push(k.add([k.text("ESC / E — закрыть", { size: 11 }), k.color(154, 147, 132), k.pos(480, 562), k.anchor("center"), k.fixed()]));
+  trustReportObjs.push(k.add([k.text("// " + survLabel, { size: 17 }), k.color(194, 32, 42), k.opacity(0.9), k.pos(480, 470), k.anchor("center"), k.fixed()]));
+  trustReportObjs.push(k.add([k.text("ESC / E — закрыть", { size: 16 }), k.color(154, 147, 132), k.pos(480, 562), k.anchor("center"), k.fixed()]));
 
   const onClose = k.onKeyPress("escape", () => { closeTrustReport(); onClose.cancel(); });
   const onTouchClose = k.onUpdate(() => {
@@ -191,21 +191,21 @@ function openLaptop() {
 
   laptopObjs.push(k.add([k.rect(960, 600), k.color(0, 0, 0), k.opacity(0.72), k.pos(0, 0), k.fixed(), "laptop"]));
   laptopObjs.push(k.add([k.rect(620, 390), k.color(8, 10, 14), k.opacity(0.96), k.outline(2, k.rgb(98, 197, 255)), k.pos(170, 100), k.fixed()]));
-  laptopObjs.push(k.add([k.text("NEXCORE LAPTOP", { size: 34 }), k.color(98, 197, 255), k.pos(480, 134), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("NEXCORE LAPTOP", { size: 40 }), k.color(98, 197, 255), k.pos(480, 128), k.anchor("center"), k.fixed()]));
   laptopObjs.push(k.add([k.text("// local session · manual save", { size: 16 }), k.color(154, 147, 132), k.pos(480, 174), k.anchor("center"), k.fixed()]));
 
   rows.forEach(([label, value], i) => {
     const y = 220 + i * 34;
-    laptopObjs.push(k.add([k.text(`${label}:`, { size: 16 }), k.color(255, 179, 71), k.pos(220, y), k.fixed()]));
-    laptopObjs.push(k.add([k.text(String(value), { size: 16, width: 420 }), k.color(232, 226, 212), k.pos(330, y), k.fixed()]));
+    laptopObjs.push(k.add([k.text(`${label}:`, { size: 18 }), k.color(255, 179, 71), k.pos(220, y), k.fixed()]));
+    laptopObjs.push(k.add([k.text(String(value), { size: 18, width: 420 }), k.color(232, 226, 212), k.pos(330, y), k.fixed()]));
   });
 
   const saveBtn = k.add([k.rect(240, 48), k.color(20, 42, 52), k.outline(1, k.rgb(98, 197, 255)), k.pos(230, 392), k.area(), k.fixed(), "laptop-btn"]);
   const closeBtn = k.add([k.rect(240, 48), k.color(42, 20, 24), k.outline(1, k.rgb(194, 32, 42)), k.pos(490, 392), k.area(), k.fixed(), "laptop-btn"]);
   laptopObjs.push(saveBtn, closeBtn);
-  laptopObjs.push(k.add([k.text("СОХРАНИТЬ", { size: 18 }), k.color(232, 226, 212), k.pos(350, 416), k.anchor("center"), k.fixed()]));
-  laptopObjs.push(k.add([k.text("ЗАКРЫТЬ", { size: 18 }), k.color(232, 226, 212), k.pos(610, 416), k.anchor("center"), k.fixed()]));
-  laptopObjs.push(k.add([k.text("T / ESC закрыть · сохранение запоминает текущую сцену, позицию и прогресс", { size: 13, width: 620 }), k.color(90, 84, 72), k.pos(480, 462), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("СОХРАНИТЬ", { size: 21 }), k.color(232, 226, 212), k.pos(350, 416), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("ЗАКРЫТЬ", { size: 21 }), k.color(232, 226, 212), k.pos(610, 416), k.anchor("center"), k.fixed()]));
+  laptopObjs.push(k.add([k.text("T / ESC закрыть · сохранение запоминает текущую сцену, позицию и прогресс", { size: 15, width: 640 }), k.color(90, 84, 72), k.pos(480, 462), k.anchor("center"), k.fixed()]));
 
   saveBtn.onClick(() => {
     Aud.save();
@@ -416,8 +416,8 @@ function openDialog(speaker, line, choices, portraitOverride) {
   const useTwoCols = nChoices > 4;
   dialogChoiceCols = useTwoCols ? 2 : 1;
   const choiceRows = useTwoCols ? Math.ceil(nChoices / 2) : nChoices;
-  const choiceStep = 42;
-  const choiceH = 38;
+  const choiceStep = 46;
+  const choiceH = 42;
   const choicesHeight = 10 + choiceRows * choiceStep;
   const boxH = 220;
   const totalH = boxH + choicesHeight;
@@ -473,7 +473,7 @@ function openDialog(speaker, line, choices, portraitOverride) {
 
   // speaker name + separator
   dialogObjs.push(k.add([
-    k.text("▌ " + speaker, { size: 22 }),
+    k.text("▌ " + speaker, { size: 24 }),
     k.color(194, 32, 42),
     k.pos(textX, boxY + 16),
     k.fixed()
@@ -488,7 +488,7 @@ function openDialog(speaker, line, choices, portraitOverride) {
 
   // dialog text
   dialogObjs.push(k.add([
-    k.text(line, { size: 22, width: textW }),
+    k.text(line, { size: 24, width: textW }),
     k.color(248, 244, 232),
     k.pos(textX, boxY + 58),
     k.fixed()
@@ -517,7 +517,7 @@ function openDialog(speaker, line, choices, portraitOverride) {
     const maxLen = useTwoCols ? 48 : 150;
     const shown = labelText.length > maxLen ? labelText.slice(0, maxLen - 1) + "…" : labelText;
     const lbl = k.add([
-      k.text(shown, { size: 17 }),
+      k.text(shown, { size: 19 }),
       k.color(248, 244, 232),
       k.pos(btnX + 14, btnY + 10),
       k.fixed()

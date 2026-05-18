@@ -762,9 +762,9 @@ function getHudItems() {
 
 function addHudBar(x, y, w, label, value, fillColor) {
   const pct = Math.max(0, Math.min(1, value / 100));
-  k.add([k.text(label, { size: 9 }), k.color(232, 226, 212), k.opacity(0.82), k.pos(x, y), k.fixed(), k.z(990), "game-hud"]);
-  k.add([k.rect(w, 8), k.color(12, 14, 18), k.outline(1, k.rgb(65, 51, 54)), k.pos(x + 62, y + 2), k.fixed(), k.z(990), "game-hud"]);
-  k.add([k.rect(Math.max(2, (w - 2) * pct), 6), k.color(fillColor[0], fillColor[1], fillColor[2]), k.pos(x + 63, y + 3), k.fixed(), k.z(991), "game-hud"]);
+  k.add([k.text(label, { size: 13 }), k.color(232, 226, 212), k.opacity(0.9), k.pos(x, y), k.fixed(), k.z(990), "game-hud"]);
+  k.add([k.rect(w, 11), k.color(12, 14, 18), k.outline(1, k.rgb(65, 51, 54)), k.pos(x + 76, y + 3), k.fixed(), k.z(990), "game-hud"]);
+  k.add([k.rect(Math.max(2, (w - 2) * pct), 9), k.color(fillColor[0], fillColor[1], fillColor[2]), k.pos(x + 77, y + 4), k.fixed(), k.z(991), "game-hud"]);
 }
 
 function createGameHUD() {
@@ -773,11 +773,11 @@ function createGameHUD() {
   const hud = k.add([k.pos(0, 0), k.fixed(), k.z(980), "game-hud"]);
   gameHud.root = hud;
 
-  hud.add([k.rect(960, 74), k.color(5, 7, 10), k.opacity(0.78), k.pos(0, 0)]);
+  hud.add([k.rect(960, 96), k.color(5, 7, 10), k.opacity(0.82), k.pos(0, 0)]);
   // surveillance bar: hidden when low, intensifies as NEXAI focuses on the player
   const surv = Math.max(0, Math.min(100, state.surveillance || 0));
   const barColor = surv >= 60 ? [255, 60, 70] : surv >= 30 ? [220, 90, 60] : [194, 32, 42];
-  hud.add([k.rect(960, 2), k.color(barColor[0], barColor[1], barColor[2]), k.opacity(0.78), k.pos(0, 74)]);
+  hud.add([k.rect(960, 2), k.color(barColor[0], barColor[1], barColor[2]), k.opacity(0.78), k.pos(0, 96)]);
   // a faint surveillance overlay (only visible when threshold crossed)
   if (surv >= 30) {
     const flicker = k.add([k.rect(960, 600), k.color(194, 32, 42), k.opacity(0.04 + (surv - 30) / 500), k.pos(0, 0), k.fixed(), k.z(995), "game-hud"]);
@@ -785,32 +785,32 @@ function createGameHUD() {
   }
   // "в базе" marker
   if (state.inBaseFlagged) {
-    hud.add([k.text("◉ NEXAI", { size: 9 }), k.color(194, 32, 42), k.opacity(0.85), k.pos(880, 6)]);
+    hud.add([k.text("◉ NEXAI", { size: 13 }), k.color(194, 32, 42), k.opacity(0.85), k.pos(862, 8)]);
   }
-  hud.add([k.text(`АКТ ${a}: ${actTitle(a)}`, { size: 13 }), k.color(255, 179, 71), k.pos(20, 12)]);
-  hud.add([k.text(shortText(state.task, 72), { size: 13 }), k.color(232, 226, 212), k.pos(20, 34)]);
-  hud.add([k.text(`Локация: ${shortText(sceneTitle(state.scene), 28)}`, { size: 10 }), k.color(154, 147, 132), k.pos(20, 55)]);
+  hud.add([k.text(`АКТ ${a}: ${actTitle(a)}`, { size: 17 }), k.color(255, 179, 71), k.pos(20, 10)]);
+  hud.add([k.text(shortText(state.task, 62), { size: 17, width: 560 }), k.color(232, 226, 212), k.pos(20, 34)]);
+  hud.add([k.text(`Локация: ${shortText(sceneTitle(state.scene), 34)}`, { size: 14 }), k.color(154, 147, 132), k.pos(20, 72)]);
 
-  addHudBar(650, 14, 190, "ТРЕВОГА", state.fear || 0, [194, 32, 42]);
-  addHudBar(650, 34, 190, "КОФЕИН", state.coffee || 0, [255, 179, 71]);
-  addHudBar(650, 54, 190, "HP", state.hp == null ? 100 : state.hp, [168, 255, 101]);
+  addHudBar(640, 12, 160, "ТРЕВОГА", state.fear || 0, [194, 32, 42]);
+  addHudBar(640, 38, 160, "КОФЕИН", state.coffee || 0, [255, 179, 71]);
+  addHudBar(640, 64, 160, "HP", state.hp == null ? 100 : state.hp, [168, 255, 101]);
 
   const items = getHudItems();
   const invTitle = items.length ? "ИНВЕНТАРЬ / КВЕСТЫ" : "ИНВЕНТАРЬ: пусто";
-  hud.add([k.text(invTitle, { size: 9 }), k.color(168, 255, 101), k.opacity(0.86), k.pos(650, 69)]);
+  hud.add([k.text(invTitle, { size: 13 }), k.color(168, 255, 101), k.opacity(0.9), k.pos(620, 106)]);
 
-  const panel = k.add([k.pos(668, 86), k.fixed(), k.z(980), "game-hud"]);
-  panel.add([k.rect(270, 116), k.color(5, 7, 10), k.opacity(0.58), k.outline(1, k.rgb(64, 38, 42)), k.pos(0, 0)]);
+  const panel = k.add([k.pos(620, 124), k.fixed(), k.z(980), "game-hud"]);
+  panel.add([k.rect(320, 138), k.color(5, 7, 10), k.opacity(0.64), k.outline(1, k.rgb(64, 38, 42)), k.pos(0, 0)]);
   const visibleItems = items.length ? items : ["нет предметов"];
   visibleItems.forEach((line, i) => {
-    panel.add([k.text(shortText(line, 34), { size: 9 }), k.color(i < items.length ? 232 : 154, i < items.length ? 226 : 147, i < items.length ? 212 : 132), k.pos(10, 10 + i * 19)]);
+    panel.add([k.text(shortText(line, 34), { size: 13, width: 300 }), k.color(i < items.length ? 232 : 154, i < items.length ? 226 : 147, i < items.length ? 212 : 132), k.pos(10, 10 + i * 25)]);
   });
 
   const logLines = (state.log || []).slice(0, 3);
-  const logPanel = k.add([k.pos(20, 86), k.fixed(), k.z(980), "game-hud"]);
-  logPanel.add([k.rect(390, 82), k.color(5, 7, 10), k.opacity(logLines.length ? 0.5 : 0), k.outline(1, k.rgb(64, 38, 42)), k.pos(0, 0)]);
+  const logPanel = k.add([k.pos(20, 108), k.fixed(), k.z(980), "game-hud"]);
+  logPanel.add([k.rect(460, 98), k.color(5, 7, 10), k.opacity(logLines.length ? 0.58 : 0), k.outline(1, k.rgb(64, 38, 42)), k.pos(0, 0)]);
   logLines.forEach((line, i) => {
-    logPanel.add([k.text(shortText(line, 54), { size: 9 }), k.color(154, 147, 132), k.pos(10, 10 + i * 21)]);
+    logPanel.add([k.text(shortText(line, 48), { size: 13, width: 440 }), k.color(154, 147, 132), k.pos(10, 10 + i * 29)]);
   });
 }
 

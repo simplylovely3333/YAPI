@@ -102,7 +102,7 @@ grep -q '_mode: "patrol"' js/scenes-act1.js || fail "Act 1 library bots must hav
 grep -q 'bot._mode = "chase"' js/scenes-act1.js || fail "Act 1 library bots must chase the player when seen"
 grep -q 'bot._mode = "search"' js/scenes-act1.js || fail "Act 1 library bots must search last known player position"
 grep -q 'state.hp' js/scenes-act1.js || fail "Act 1 library bots must damage player HP"
-grep -q 'addHudBar(650, 54, 190, "HP"' js/core.js || fail "HUD must show player HP"
+grep -q 'addHudBar(.*"HP"' js/core.js || fail "HUD must show player HP"
 grep -q 'function startCounterPatchPuzzle' js/scenes-act1.js || fail "Act 1 must include the third counter-patch task"
 grep -q 'Нужно разрушить его цепочку контроля' js/cutscenes.js || fail "DANNA mission briefing must explain how to stop NEXAI"
 grep -q 'DANNA · local' js/scenes-act2.js || fail "inside-computer intro must use DANNA, not NEXAI echo"

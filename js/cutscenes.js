@@ -156,7 +156,7 @@ k.scene("menu", () => {
     k.drawText({ text: "STACK OVERFLOW", size: 86, pos: k.vec2(480 + gx - 3, 180), anchor: "center", color: k.rgb(194, 32, 42), opacity: 0.75 });
     k.drawText({ text: "STACK OVERFLOW", size: 86, pos: k.vec2(480 + gx, 180), anchor: "center", color: k.rgb(232, 226, 212) });
 
-    k.drawText({ text: "// NexCore Internal Build · 2031.04.12 · 03:47 AM", size: 13, pos: k.vec2(480, 230), anchor: "center", color: k.rgb(154, 147, 132) });
+    k.drawText({ text: "// NexCore Internal Build · 2031.04.12 · 03:47 AM", size: 17, pos: k.vec2(480, 232), anchor: "center", color: k.rgb(154, 147, 132) });
 
     items.forEach((it, i) => {
       const y = 340 + i * 60;
@@ -172,8 +172,8 @@ k.scene("menu", () => {
       });
     });
 
-    k.drawText({ text: "Стик: выбор    E / тап подтвердить", size: 16, pos: k.vec2(480, 540), anchor: "center", color: k.rgb(90, 84, 72) });
-    k.drawText({ text: "Error 403: Humans deprecated", size: 14, pos: k.vec2(480, 562), anchor: "center", color: k.rgb(90, 84, 72) });
+    k.drawText({ text: "Стик: выбор    E / тап подтвердить", size: 18, pos: k.vec2(480, 540), anchor: "center", color: k.rgb(90, 84, 72) });
+    k.drawText({ text: "Error 403: Humans deprecated", size: 16, pos: k.vec2(480, 564), anchor: "center", color: k.rgb(90, 84, 72) });
   });
 
   function step(dir) {
@@ -251,18 +251,18 @@ k.scene("saves", ({ mode = "load", returnTo = "menu" } = {}) => {
       // marker
       k.drawRect({ pos: k.vec2(80, y), width: 4, height: 90, color: k.rgb(slots[i] ? 194 : 80, slots[i] ? 32 : 30, slots[i] ? 42 : 36) });
 
-      k.drawText({ text: (selected ? "▸ " : "  ") + info.title, size: 22, pos: k.vec2(100, y + 15), color: selected ? k.rgb(255, 255, 255) : k.rgb(232, 226, 212) });
-      k.drawText({ text: info.sub, size: 15, pos: k.vec2(100, y + 50), color: k.rgb(154, 147, 132), width: 740 });
+      k.drawText({ text: (selected ? "▸ " : "  ") + info.title, size: 24, pos: k.vec2(100, y + 13), color: selected ? k.rgb(255, 255, 255) : k.rgb(232, 226, 212) });
+      k.drawText({ text: info.sub, size: 17, pos: k.vec2(100, y + 50), color: k.rgb(154, 147, 132), width: 720 });
 
       // hint
       if (selected) {
         const hint = slots[i]
           ? (mode === "save" ? "ENTER — перезаписать · DEL — удалить" : "ENTER — загрузить · DEL — удалить")
           : (mode === "save" ? "ENTER — сохранить сюда" : "слот пуст");
-        k.drawText({ text: hint, size: 14, pos: k.vec2(880, y + 70), anchor: "topright", color: k.rgb(98, 197, 255) });
+        k.drawText({ text: hint, size: 16, pos: k.vec2(880, y + 70), anchor: "topright", color: k.rgb(98, 197, 255) });
       }
     }
-    k.drawText({ text: "Стик: выбор · E/тап подтвердить · ☰ назад", size: 16, pos: k.vec2(480, 562), anchor: "center", color: k.rgb(90, 84, 72) });
+    k.drawText({ text: "Стик: выбор · E/тап подтвердить · ☰ назад", size: 18, pos: k.vec2(480, 562), anchor: "center", color: k.rgb(90, 84, 72) });
   });
 
   function step(dir) {
@@ -345,8 +345,8 @@ k.scene("saves", ({ mode = "load", returnTo = "menu" } = {}) => {
 k.scene("quit", () => {
   k.onDraw(() => {
     k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 600, color: k.rgb(0, 0, 0) });
-    k.drawText({ text: "// connection closed", size: 22, pos: k.vec2(480, 280), anchor: "center", color: k.rgb(194, 32, 42) });
-    k.drawText({ text: "Закройте вкладку. NEXAI не выпускает дольше необходимого.", size: 13, pos: k.vec2(480, 320), anchor: "center", color: k.rgb(154, 147, 132) });
+    k.drawText({ text: "// connection closed", size: 28, pos: k.vec2(480, 276), anchor: "center", color: k.rgb(194, 32, 42) });
+    k.drawText({ text: "Закройте вкладку. NEXAI не выпускает дольше необходимого.", size: 18, pos: k.vec2(480, 324), anchor: "center", color: k.rgb(154, 147, 132) });
   });
   k.onKeyPress("escape", () => k.go("menu"));
 });
@@ -391,19 +391,19 @@ k.scene("cutscene", ({ frames, onEnd }) => {
     k.drawRect({ pos: k.vec2(0, 0), width: 960, height: 50, color: k.rgb(0, 0, 0) });
     k.drawRect({ pos: k.vec2(0, 550), width: 960, height: 50, color: k.rgb(0, 0, 0) });
 
-    k.drawText({ text: "STACK_OVERFLOW :: ACT_1", size: 10, pos: k.vec2(24, 22), color: k.rgb(255, 255, 255), opacity: 0.5 });
-    k.drawText({ text: `SCENE ${String(idx + 1).padStart(2, "0")} / ${String(frames.length).padStart(2, "0")}`, size: 10, pos: k.vec2(936, 22), anchor: "topright", color: k.rgb(194, 32, 42) });
+    k.drawText({ text: "STACK_OVERFLOW :: ACT_1", size: 14, pos: k.vec2(24, 18), color: k.rgb(255, 255, 255), opacity: 0.5 });
+    k.drawText({ text: `SCENE ${String(idx + 1).padStart(2, "0")} / ${String(frames.length).padStart(2, "0")}`, size: 14, pos: k.vec2(936, 18), anchor: "topright", color: k.rgb(194, 32, 42) });
 
     // dialog box
-    k.drawRect({ pos: k.vec2(34, 390), width: 892, height: 154, color: k.rgb(6, 8, 12), opacity: 0.98 });
-    k.drawRect({ pos: k.vec2(34, 390), width: 892, height: 3, color: k.rgb(194, 32, 42) });
+    k.drawRect({ pos: k.vec2(34, 366), width: 892, height: 178, color: k.rgb(6, 8, 12), opacity: 0.98 });
+    k.drawRect({ pos: k.vec2(34, 366), width: 892, height: 3, color: k.rgb(194, 32, 42) });
     k.drawRect({ pos: k.vec2(34, 541), width: 892, height: 3, color: k.rgb(194, 32, 42) });
 
-    k.drawText({ text: "▌ " + frame.who, size: 18, pos: k.vec2(58, 410), color: k.rgb(194, 32, 42) });
-    k.drawText({ text: frame.line.slice(0, Math.floor(typed)), size: 20, pos: k.vec2(58, 440), width: 844, color: k.rgb(248, 244, 232) });
+    k.drawText({ text: "▌ " + frame.who, size: 24, pos: k.vec2(58, 386), color: k.rgb(194, 32, 42) });
+    k.drawText({ text: frame.line.slice(0, Math.floor(typed)), size: 25, pos: k.vec2(58, 422), width: 844, color: k.rgb(248, 244, 232) });
 
     if (Math.sin(k.time() * 4) > 0) {
-      k.drawText({ text: "‹E / SPACE› далее", size: 13, pos: k.vec2(904, 520), anchor: "topright", color: k.rgb(190, 184, 172) });
+      k.drawText({ text: "‹E / тап› далее", size: 17, pos: k.vec2(904, 518), anchor: "topright", color: k.rgb(190, 184, 172) });
     }
     for (let i = 0; i < frames.length; i++) {
       k.drawRect({ pos: k.vec2(58 + i * 12, 522), width: 8, height: 3, color: i === idx ? k.rgb(194, 32, 42) : (i < idx ? k.rgb(106, 31, 36) : k.rgb(42, 42, 42)) });
