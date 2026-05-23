@@ -397,7 +397,7 @@ k.scene("floor7_lab", () => {
         ]);
       } else {
         openDialog("Терминал PR/1488", "› всё готово. это ввод приведёт к финалу акта. убедитесь, что собрали всё необходимое.", [
-          { text: "К финалу (Акт 4)", action: () => { clearDialog(); playCutscene(CUTSCENES.act3_broadcast, () => k.go("act4_placeholder")); } },
+          { text: "К финалу (Акт 4)", action: () => { clearDialog(); playCutscene(CUTSCENES.act3_broadcast, () => playCutscene(CUTSCENES.act4_enter, () => k.go("act4_review"))); } },
           { text: "Не сейчас", action: clearDialog }
         ]);
       }
@@ -678,4 +678,3 @@ k.scene("floor14", () => {
   p.face = "right";
   setupPlayerControls(p);
 });
-

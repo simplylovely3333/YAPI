@@ -444,6 +444,15 @@ function defaultState() {
     act1LibraryClueStamp: false,
     act1LibraryEscapeStarted: false,
     act1CounterPatchDone: false,
+    act1Floor3IntroTask: false,
+    act1Floor3MetAigul: false,
+    act1Floor3MetKamila: false,
+    act1Floor3MetTimur: false,
+    act1Floor3IntroDone: false,
+    act1KitchenTask: false,
+    act1KitchenFood: false,
+    act1KitchenDelivered: false,
+    act1StairsEntry: "bottom",
     aigerimTask: false,
     aigerimLaptopFixed: false,
     danaOfficeInvite: false,
@@ -492,7 +501,12 @@ function defaultState() {
     trust: { timur: 50, serik: 50, dana: 50, aigerim: 50, kamila: 50 },
     choices: {},
     surveillance: 0,
-    inBaseFlagged: false
+    inBaseFlagged: false,
+
+    // Act 4
+    act4Entered: false,
+    finalDecision: null,
+    endingSeen: null
   };
 }
 
@@ -679,6 +693,7 @@ function sceneTitle(scene) {
     firstday7: "7 этаж · первый день",
     floor2_tour: "2 этаж · библиотека",
     floor3_tour: "3 этаж · HR",
+    act1_stairs: "лестница · служебный маршрут",
     floor4_tour: "4 этаж · data quality",
     floor5_tour: "5 этаж · marketing",
     floor6_tour: "6 этаж · QA",
@@ -705,7 +720,11 @@ function sceneTitle(scene) {
     basement: "подвал · ядро NEXAI",
     floor5: "5 этаж · PR",
     floor14: "14 этаж · крыша",
-    act4_placeholder: "акт 4"
+    act4_placeholder: "акт 4 · финальное ревью",
+    act4_review: "акт 4 · PR/1488",
+    ending_corporate: "концовка · корпоративная",
+    ending_rollback: "концовка · rollback",
+    ending_fork: "концовка · свободная DANNA"
   };
   return titles[scene] || scene || "—";
 }

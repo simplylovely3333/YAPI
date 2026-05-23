@@ -113,6 +113,7 @@ function setupPlayerControls(p) {
       if (px > ex.pos.x && px < ex.pos.x + ex.width && py > ex.pos.y - 30 && py < ex.pos.y + ex.height + 30) {
         Aud.elevatorDing();
         if (ex._to === "elevator") state.elevatorReturnTo = state.scene;
+        if (ex._to === "act1_stairs") state.act1StairsEntry = state.scene === "floor10_tour" ? "top" : "bottom";
         if (state.scene === "elevator") state.arriveFromElevator = true;
         state.scene = ex._to;
         k.go(ex._to);

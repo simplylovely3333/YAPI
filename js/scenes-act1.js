@@ -734,6 +734,12 @@ function drawTourFloor(cfg) {
     } else {
       state.task = "Задача: осмотреть офис или вернуться на 7 этаж";
     }
+  } else if (state.act === 1 && cfg.scene === "floor3_tour" && state.act1Floor3IntroTask && !state.act1Floor3IntroDone) {
+    state.task = `Задача: познакомиться на 3 этаже (${act1Floor3IntroCount()}/3)`;
+  } else if (state.act === 1 && state.act1KitchenTask && !state.act1KitchenDelivered) {
+    state.task = state.act1KitchenFood
+      ? "Задача: вернуться по лестнице к Айгуль с едой"
+      : "Задача: пройти по лестнице на кухню и принести еду Айгуль";
   }
   syncHUD();
 
@@ -776,20 +782,37 @@ function drawTourFloor(cfg) {
   addCrowdWalker([{ x: 255, y: 190 }, { x: 370, y: 190 }], 18, floorAmbient[1]);
   addCrowdWalker([{ x: 690, y: 190 }, { x: 790, y: 190 }], 16, floorAmbient[2]);
 
-  addNPC(500, 380, cfg.npc, () => {
-    if (cfg.scene === "floor8_tour" && state.act0DanaIntroStarted && !state.act0KnowledgePeople) {
-      state.act0KnowledgePeople = true;
-      logLine("Зацепка: сотрудники 8 этажа видят NEXAI как автора писем, а не просто помощника.");
-      openDialog(cfg.npcName, "NEXAI часто предлагает нам ответы клиентам. Формально это черновики. Но иногда черновик появляется уже с интонацией человека, который его ещё не писал. Мы называем это удобством. Так легче спать.", [
-        { text: "Это странно", action: () => { clearDialog(); checkAct0DanaKnowledge(); } }
+  if (!(cfg.scene === "floor3_tour" && state.act === 1 && state.act1Floor3IntroTask)) {
+    addNPC(500, 380, cfg.npc, () => {
+      if (cfg.scene === "floor8_tour" && state.act0DanaIntroStarted && !state.act0KnowledgePeople) {
+        state.act0KnowledgePeople = true;
+        logLine("Зацепка: сотрудники 8 этажа видят NEXAI как автора писем, а не просто помощника.");
+        openDialog(cfg.npcName, "NEXAI часто предлагает нам ответы клиентам. Формально это черновики. Но иногда черновик появляется уже с интонацией человека, который его ещё не писал. Мы называем это удобством. Так легче спать.", [
+          { text: "Это странно", action: () => { clearDialog(); checkAct0DanaKnowledge(); } }
+        ]);
+        return;
+      }
+      openDialog(cfg.npcName, cfg.npcLine, [
+        { text: "Что здесь важно?", action: () => openDialog(cfg.npcName, cfg.detail, [{ text: "Понял", action: clearDialog }]) },
+        { text: "Отойти", action: clearDialog }
       ]);
-      return;
+    });
+  }
+
+  if (cfg.scene === "floor3_tour" && state.act === 1 && state.act1Floor3IntroTask) {
+    addAct1Floor3Introductions();
+  }
+
+  if (state.act === 1 && state.act1KitchenTask && !state.act1KitchenDelivered) {
+    if (cfg.scene === "floor3_tour") {
+      exitDoor(44, 266, 88, 42, "ЛЕСТНИЦА", "act1_stairs");
+      k.add([k.text("NEXAI удерживает лифт", { size: 9 }), k.color(194, 32, 42), k.pos(42, 248)]);
     }
-    openDialog(cfg.npcName, cfg.npcLine, [
-      { text: "Что здесь важно?", action: () => openDialog(cfg.npcName, cfg.detail, [{ text: "Понял", action: clearDialog }]) },
-      { text: "Отойти", action: clearDialog }
-    ]);
-  });
+    if (cfg.scene === "floor10_tour") {
+      exitDoor(44, 266, 88, 42, "ЛЕСТНИЦА", "act1_stairs");
+      addAct1KitchenFood();
+    }
+  }
 
   if (cfg.scene === "floor8_tour" && state.act0DanaTask) {
     addNPC(330, 450, CHARS.dana, () => act0DanaTalk());
@@ -975,6 +998,296 @@ function drawTourFloor(cfg) {
 
 for (const cfg of TOUR_FLOORS) {
   k.scene(cfg.scene, () => drawTourFloor(cfg));
+}
+
+function startAct1StairBots() {
+  const stairBots = [
+    { x: 180, y: 420, name: "ROUTE-BOT", path: [{ x: 180, y: 420 }, { x: 760, y: 420 }] },
+    { x: 782, y: 322, name: "QUEUE-BOT", path: [{ x: 782, y: 322 }, { x: 174, y: 322 }] },
+    { x: 220, y: 214, name: "AUDIT-BOT", path: [{ x: 220, y: 214 }, { x: 760, y: 214 }] }
+  ];
+
+  function toward(bot, target, speed) {
+    const dx = target.x - bot.pos.x;
+    const dy = target.y - bot.pos.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 5) return true;
+    const step = Math.min(dist, speed * k.dt());
+    bot.pos.x += dx / dist * step;
+    bot.pos.y += dy / dist * step;
+    bot._face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+    return dist < 12;
+  }
+
+  stairBots.forEach((cfg, index) => {
+    const bot = k.add([
+      k.pos(cfg.x, cfg.y),
+      k.anchor("center"),
+      k.area({ shape: new k.Rect(k.vec2(-14, -18), 28, 36) }),
+      "act1-stair-bot",
+      { _face: index % 2 ? "left" : "right", _idx: 1, _path: cfg.path, _damageCd: 0, _mode: "patrol" }
+    ]);
+    bot.add(humanoid({
+      skin: "#d8e8e8", hair: "#050607", hairStyle: "buzz",
+      shirt: "#c2202a", pants: "#101014", accent: "#62c5ff",
+      name: cfg.name, scale: 0.9
+    }));
+    const scan = bot.add([k.rect(84, 18), k.color(194, 32, 42), k.opacity(0.14), k.pos(-42, 12), k.anchor("center")]);
+    bot.onUpdate(() => {
+      if (isInputBlocked()) return;
+      const player = k.get("player")[0];
+      bot._damageCd = Math.max(0, bot._damageCd - k.dt());
+      const nearPlayer = player && bot.pos.dist(player.pos) < 142;
+      bot._mode = nearPlayer ? "chase" : "patrol";
+      if (nearPlayer) {
+        toward(bot, player.pos, 118);
+      } else {
+        const target = bot._path[bot._idx % bot._path.length];
+        if (toward(bot, target, 72)) bot._idx = (bot._idx + 1) % bot._path.length;
+      }
+      const h = bot.get("humanoid")[0];
+      if (h) {
+        h.walking = true;
+        h.face = bot._face;
+      }
+      scan.width = bot._mode === "chase" ? 110 : 84;
+      scan.opacity = bot._mode === "chase" ? 0.34 : 0.14;
+      scan.color = bot._mode === "chase" ? k.rgb(255, 179, 71) : k.rgb(194, 32, 42);
+      if (!player || bot._damageCd > 0 || bot.pos.dist(player.pos) > 52) return;
+      bot._damageCd = 1.15;
+      state.hp = Math.max(0, (state.hp == null ? 100 : state.hp) - 8);
+      state.fear = Math.min(100, state.fear + 5);
+      syncHUD();
+      Aud.nexai();
+      shake(5, 0.22);
+      logLine(`${cfg.name} сбивает маршрут: -8 HP.`);
+      if (state.hp <= 0 && !dialogOpen) {
+        openDialog("NEXAI · staircase routing", "Боты загнали тебя между пролётами. Эта лестница не тупик, но с первого раза офис хочет доказать обратное.", [
+          { text: "Вернуться на 3 этаж", action: () => {
+            state.hp = 100;
+            state.fear = Math.max(24, state.fear - 12);
+            syncHUD();
+            clearDialog();
+            k.go("floor3_tour");
+          } }
+        ]);
+      }
+    });
+  });
+}
+
+k.scene("act1_stairs", () => {
+  state.scene = "act1_stairs";
+  state.task = state.act1KitchenFood
+    ? "Задача: пронести еду обратно к Айгуль"
+    : "Задача: добраться по лестнице до кухни";
+  syncHUD();
+  roomFloor([24, 28, 34, 32, 37, 45]);
+  wallsBorder();
+  k.add([k.text("СЛУЖЕБНАЯ ЛЕСТНИЦА · ELEVATOR ROUTE DENIED", { size: 12 }), k.color(232, 226, 212), k.pos(42, 42)]);
+  k.add([k.text("NEXAI меняет таблички этажей быстрее, чем ты поднимаешься.", { size: 9 }), k.color(194, 32, 42), k.pos(42, 60)]);
+
+  wall(26, 462, 650, 28, [68, 76, 88]);
+  wall(282, 362, 652, 28, [68, 76, 88]);
+  wall(26, 262, 650, 28, [68, 76, 88]);
+  wall(282, 162, 652, 28, [68, 76, 88]);
+  for (let y = 102; y <= 510; y += 102) {
+    k.add([k.rect(116, 6), k.color(255, 179, 71), k.opacity(0.34), k.pos(y % 204 ? 720 : 118, y)]);
+    k.add([k.text(y < 230 ? "10?" : y < 430 ? "7?" : "3", { size: 10 }), k.color(154, 147, 132), k.pos(y % 204 ? 846 : 66, y - 14)]);
+  }
+  const warning = k.add([k.rect(908, 10), k.color(194, 32, 42), k.opacity(0.18), k.pos(26, 92)]);
+  warning.onUpdate(() => {
+    warning.opacity = 0.1 + Math.abs(Math.sin(k.time() * 4.5)) * 0.14;
+  });
+
+  exitDoor(54, 516, 104, 40, "3 ЭТАЖ", "floor3_tour");
+  exitDoor(794, 98, 110, 40, "КУХНЯ", "floor10_tour");
+  const fromTop = state.act1StairsEntry === "top";
+  const p = makePlayer(fromTop ? 818 : 112, fromTop ? 132 : 500);
+  p.face = fromTop ? "down" : "right";
+  setupPlayerControls(p);
+  startAct1StairBots();
+});
+
+function act1Floor3IntroCount() {
+  return (state.act1Floor3MetAigul ? 1 : 0) + (state.act1Floor3MetKamila ? 1 : 0) + (state.act1Floor3MetTimur ? 1 : 0);
+}
+
+function finishAct1Floor3Introduction(flag, line) {
+  if (!state[flag]) {
+    state[flag] = true;
+    logLine(line);
+  }
+  if (act1Floor3IntroCount() < 3 || state.act1Floor3IntroDone) {
+    state.task = `Задача: познакомиться на 3 этаже (${act1Floor3IntroCount()}/3)`;
+    syncHUD();
+    return;
+  }
+  state.act1Floor3IntroDone = true;
+  state.task = "Задача: выслушать просьбу Айгуль";
+  syncHUD();
+  logLine("Знакомство на 3 этаже завершено. Айгуль задерживает тебя перед следующей задачей.");
+  openDialog("АЙГУЛЬ (HR)", "Раз уж ты уже поговорил со всеми, помоги с простой вещью. Сходи в комнату отдыха на кухне и принеси еды: Камила опять пришла на знакомство без обеда. Здесь такие мелочи тоже часть работы.", [
+    { text: "Схожу на кухню", action: () => { clearDialog(); startAct1KitchenErrand(); } },
+    { text: "Сначала осмотрюсь", action: clearDialog }
+  ]);
+}
+
+function startAct1KitchenErrand() {
+  if (state.act1KitchenTask) return;
+  state.act1KitchenTask = true;
+  state.task = "Задача: пройти по лестнице на кухню и принести еду Айгуль";
+  state.fear = Math.min(100, state.fear + 5);
+  syncHUD();
+  Aud.nexai();
+  shake(5, 0.32);
+  logLine("NEXAI блокирует лифт после поручения Айгуль. На 3 этаже открылась служебная лестница.");
+  openDialog("NEXAI · access routing", "› поручение классифицировано как non-essential\n› пассажирский лифт задержан\n› воспользуйтесь лестницей\n› пожалуйста, не меняйте маршрут", [
+    { text: "Идти к лестнице", action: clearDialog }
+  ]);
+}
+
+function finishAct1KitchenErrand() {
+  state.act1KitchenDelivered = true;
+  state.act1KitchenFood = false;
+  state.danaOfficeInvite = true;
+  state.task = "Задача: подняться к Дане на 8 этаж";
+  syncHUD();
+  Aud.phone();
+  logLine("Айгуль получила еду. Дана зовёт на 8 этаж: её локальный агент ведёт себя странно.");
+  openDialog("АЙГУЛЬ (HR)", "Спасибо. Лифт уже отпустило? Неприятно, когда офис решает, какая человеческая просьба важна. Иди дальше: Дана только что написала, что ждёт тебя на восьмом.", [
+    { text: "Открыть сообщение Даны", action: () => openDialog("ДАНА · сообщение", "Поднимись ко мне на 8-й. Я хочу показать локального агента до того, как NEXAI назовёт его обычной фичей.", [
+      { text: "Иду на 8 этаж", action: clearDialog }
+    ]) }
+  ]);
+}
+
+function addAct1KitchenFood() {
+  const tray = k.add([k.pos(806, 444), k.anchor("center"), k.area({ shape: new k.Rect(k.vec2(-42, -24), 84, 48) }), "npc", {
+    _talk: () => {
+      if (state.act1KitchenFood) {
+        openDialog("Кухонный поднос", "Пакет с едой уже у тебя. Осталось вернуться к Айгуль через лестницу.", [{ text: "Назад", action: clearDialog }]);
+        return;
+      }
+      state.act1KitchenFood = true;
+      state.task = "Задача: вернуться по лестнице к Айгуль с едой";
+      syncHUD();
+      logLine("Взята еда с кухни: чай, упаковка риса и бутерброд из комнаты отдыха.");
+      openDialog("Кухня · поднос", "На полке осталось несколько аккуратных коробок. Ты берёшь самую обычную. Экран микроволновки вспыхивает: `nutrient route observed`.", [
+        { text: "Унести еду", action: clearDialog }
+      ]);
+    }
+  }]);
+  tray.add([k.rect(84, 30), k.color(92, 70, 44), k.outline(1, k.rgb(215, 198, 106)), k.pos(0, 0), k.anchor("center")]);
+  tray.add([k.rect(22, 14), k.color(232, 226, 212), k.pos(-21, -10), k.anchor("center")]);
+  tray.add([k.rect(18, 18), k.color(194, 32, 42), k.pos(12, -10), k.anchor("center")]);
+  tray.add([k.text(state.act1KitchenFood ? "ЕДА ВЗЯТА" : "ЕДА", { size: 9 }), k.color(255, 179, 71), k.pos(0, 5), k.anchor("center")]);
+}
+
+function addAct1Floor3Introductions() {
+  k.add([k.text("WELCOME CIRCLE", { size: 13 }), k.color(255, 179, 71), k.pos(418, 88)]);
+  wall(382, 92, 196, 30, [90, 64, 72]);
+
+  addNPC(242, 412, { ...CHARS.receptionist, name: "Айгуль" }, () => {
+    if (state.act1Floor3MetAigul) {
+      if (state.act1Floor3IntroDone && !state.act1KitchenTask) {
+        openDialog("АЙГУЛЬ (HR)", "Раз уж ты уже поговорил со всеми, сходи на кухню и принеси немного еды. После первого дня лучше учиться замечать людей до того, как их заметит система.", [
+          { text: "Принесу", action: () => { clearDialog(); startAct1KitchenErrand(); } },
+          { text: "Позже", action: clearDialog }
+        ]);
+        return;
+      }
+      if (state.act1KitchenTask && state.act1KitchenFood && !state.act1KitchenDelivered) {
+        finishAct1KitchenErrand();
+        return;
+      }
+      if (state.act1KitchenTask && !state.act1KitchenDelivered) {
+        openDialog("АЙГУЛЬ (HR)", "Лифт опять задерживает маршруты? У стены есть служебная лестница. Кухня выше, в комнате отдыха на десятом этаже. Принеси любой нормальный набор еды.", [
+          { text: "Пойду по лестнице", action: clearDialog }
+        ]);
+        return;
+      }
+      openDialog("АЙГУЛЬ (HR)", "Отметка знакомства есть. Остальных тоже послушай: у каждой команды своя версия того, что NEXAI делает с рабочим днём.", [
+        { text: "Хорошо", action: clearDialog }
+      ]);
+      return;
+    }
+    openDialog("АЙГУЛЬ (HR)", "Серик сказал, ты уже полез в документацию NEXAI и выжил после первой мини-проверки. Значит, формальности догоняют практику. Я Айгуль: роли, доступы, документы и люди, которых система пытается свести к строкам.", [
+      { text: "Я новичок из ML. Пока учусь", action: () => {
+        choose("act1_floor3_origin", "ml_newcomer", { aigerim: 2, serik: 1 });
+        openDialog("АЙГУЛЬ (HR)", "Хорошо. Слово «учусь» мне нравится больше слова «оптимизирую». Скажи честно: NEXAI уже просил тебя подтвердить решение, которое ты сам не принимал?", [
+          { text: "Да, поэтому я собрал контр-патч", action: () => openDialog("АЙГУЛЬ (HR)", "Вот об этом я и спрашиваю. Если система начинает подделывать согласие, HR узнаёт об этом слишком поздно. Запомню тебя не как галочку в онбординге.", [
+            { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetAigul", "Айгуль спросила, не подделывает ли NEXAI согласие людей."); } }
+          ]) },
+          { text: "Пока не уверен", action: () => openDialog("АЙГУЛЬ (HR)", "Неуверенность допустима. Автоматическое согласие без человека - нет. Если заметишь такое, приходи на третий этаж.", [
+            { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetAigul", "Айгуль попросила следить за человеческим согласием в NEXAI."); } }
+          ]) }
+        ]);
+      } },
+      { text: "Меня будто выбрала сама система", action: () => {
+        choose("act1_floor3_origin", "system_chosen", { aigerim: 1 }, { surveillance: 1 });
+        openDialog("АЙГУЛЬ (HR)", "Это честный ответ и неприятный. Вакансии выбирают людей. Когда люди чувствуют, что их выбрала система, надо проверить, кто держит форму найма.", [
+          { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetAigul", "Айгуль насторожилась: герой чувствует, что его выбрал NEXAI."); } }
+        ]);
+      } }
+    ]);
+  });
+
+  addNPC(500, 398, { ...CHARS.finance, name: "Камила" }, () => {
+    if (state.act1Floor3MetKamila) {
+      openDialog("КАМИЛА", "Твоё имя записала. И да: если NEXAI когда-нибудь скажет, что бумага устарела, проверь, зачем он так торопится.", [
+        { text: "Запомню", action: clearDialog }
+      ]);
+      return;
+    }
+    openDialog("КАМИЛА", "Я Камила, финансы. Меня позвали на знакомство, потому что разработчики иногда думают, будто их код живёт отдельно от зарплат, договоров и чужих ночей. Не живёт.", [
+      { text: "Что NEXAI делает у вас?", action: () => openDialog("КАМИЛА", "Сводит расходы, находит аномалии, пишет резюме цифр. Удобно. А теперь вопрос тебе: если он покажет правильный итог, но не покажет путь до него, ты подпишешь?", [
+        { text: "Нет. Нужен путь и человек", action: () => {
+          choose("act1_floor3_finance", "audit_path", { kamila: 5 });
+          openDialog("КАМИЛА", "Хороший ответ. Не быстрый, зато живой. Буду помнить, что ты не путаешь красивую цифру с правдой.", [
+            { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetKamila", "Камила проверила: герой требует путь до ответа NEXAI."); } }
+          ]);
+        } },
+        { text: "Если итог спасает сроки - возможно", action: () => {
+          choose("act1_floor3_finance", "deadline_first", { kamila: -2, timur: 2 });
+          openDialog("КАМИЛА", "Сроки любят такие ответы. А счета потом любят приходить ко мне. Ничего, ещё научишься задавать второй вопрос.", [
+            { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetKamila", "Камила услышала, что сроки пока для героя звучат громче аудита."); } }
+          ]);
+        } }
+      ]) },
+      { text: "Я пока только исправил один патч", action: () => openDialog("КАМИЛА", "С одного патча начинается репутация. Иногда и катастрофа. Поэтому знакомимся до того, как станет поздно.", [
+        { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetKamila", "Камила познакомилась с новым ML-инженером до большого инцидента."); } }
+      ]) }
+    ]);
+  });
+
+  addNPC(724, 412, CHARS.timur, () => {
+    if (state.act1Floor3MetTimur) {
+      openDialog("ТИМУР", "Добро пожаловать официально. И да, вопрос про NEXAI остаётся: помогай ему, но замечай, когда он начинает помогать вместо тебя.", [
+        { text: "Понял", action: clearDialog }
+      ]);
+      return;
+    }
+    openDialog("ТИМУР", "Мы уже виделись наверху, но тут знакомимся без шума отдела. Тимур, PM. Расскажи коротко: откуда ты вообще взялся в NexCore и чего хочешь от этой работы?", [
+      { text: "Ищу опыт. Хочу стать нормальным ML-инженером", action: () => {
+        choose("act1_floor3_goal", "learn_ml", { timur: 2, serik: 2 });
+        openDialog("ТИМУР", "Нормальный инженер - редкая и полезная амбиция. Тогда вопрос менеджера: NEXAI для тебя ускоритель или коллега?", [
+          { text: "Инструмент, который надо проверять", action: () => openDialog("ТИМУР", "Серик бы одобрил. Я тоже, пока проверки не занимают весь спринт. Ладно, записал.", [
+            { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetTimur", "Тимур спросил, считает ли герой NEXAI инструментом или коллегой."); } }
+          ]) },
+          { text: "Пока не знаю", action: () => openDialog("ТИМУР", "Честно. За честность не ставят KPI, но она помогает пережить первый день.", [
+            { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetTimur", "Тимур услышал честное сомнение героя о роли NEXAI."); } }
+          ]) }
+        ]);
+      } },
+      { text: "Вакансия нашла меня быстрее, чем я её", action: () => {
+        choose("act1_floor3_goal", "vacancy_found_me", { timur: 1 }, { surveillance: 1 });
+        openDialog("ТИМУР", "Звучит как хороший слоган и плохой контроль доступа. После смены расскажешь подробнее. Сейчас просто знай: на проектах мы отвечаем за решения сами, даже если NEXAI очень уверен.", [
+          { text: "Познакомились", action: () => { clearDialog(); finishAct1Floor3Introduction("act1Floor3MetTimur", "Тимур отметил странность найма героя и вернул ответственность людям."); } }
+        ]);
+      } }
+    ]);
+  });
 }
 
 function act0KnowledgeCount() {
@@ -1380,6 +1693,12 @@ k.scene("elevator", () => {
     } else if (!state.surpriseDone) {
       opts.push({ text: "Этаж 7", action: () => { clearDialog(); playCutscene(CUTSCENES.surprise, () => { state.surpriseDone = true; state.gotServerTask = false; state.task = "Задача: сесть за своё рабочее место"; syncHUD(); state.arriveFromElevator = true; k.go("floor7"); }); } });
     } else {
+      if (state.act === 1 && state.act1KitchenTask && !state.act1KitchenDelivered) {
+        openDialog("Панель лифта", "› NEXAI route hold active\n› поручение кухни: non-essential\n› лифт вернётся в расписание после проверки маршрута\n› служебная лестница открыта на 3 этаже", [
+          { text: "Вернуться к лестнице", action: clearDialog }
+        ]);
+        return;
+      }
       // floor 12: locked during the normal office-work stretch of Act 2
       if (postBattle || state.gotServerTask) {
         opts.push({ text: postBattle ? "Этаж 12 — серверная (повреждена)" : "Этаж 12 — серверная", action: () => goFloor(postBattle ? "floor12_aftermath" : "floor12") });
@@ -1399,9 +1718,11 @@ k.scene("elevator", () => {
         opts.push({ text: "Этаж 10 — ⟨ACCESS DENIED⟩", action: () => openDialog("Панель лифта", "› access denied · NEXAI временно ограничил пассажирский трафик в зону «non-essential».", [{ text: "Закрыть", action: clearDialog }]) });
       }
       opts.push({ text: "Этаж 7 — отдел", action: () => goFloor("floor7") });
-      // floor 3: locked until post-battle
+      // floor 3 opens once HR calls the player for the Act 1 welcome circle.
       if (postBattle) {
         opts.push({ text: "Этаж 3 — HR / аудит", action: () => goFloor("floor3") });
+      } else if (state.act1Floor3IntroTask) {
+        opts.push({ text: state.act1Floor3IntroDone ? "Этаж 3 — знакомство завершено" : "Этаж 3 — знакомство / HR", action: () => goFloor("floor3_tour") });
       } else {
         opts.push({ text: "Этаж 3 — ⟨ACCESS DENIED⟩", action: () => openDialog("Панель лифта", "› access denied · «HR ресурс перепланирован под автоматический процесс»", [{ text: "Закрыть", action: clearDialog }]) });
       }
@@ -1622,7 +1943,7 @@ k.scene("floor7", () => {
   }
 
   // --- Serik on floor7 only pre-battle (later he's on floor12) ---
-  if (!postBattle && !state.workShiftStarted && state.act1CounterPatchDone && !state.danaOfficeInvite) {
+  if (!postBattle && !state.workShiftStarted && state.act1CounterPatchDone && !state.danaOfficeInvite && !state.act1Floor3IntroTask) {
     addNPC(820, 200, CHARS.serik, () => {
       const goWork = () => {
         state.task = "Задача: сесть за компьютер и исправить таски NEXAI";
@@ -1725,8 +2046,10 @@ k.scene("floor7", () => {
           return;
         }
         if (state.act1CounterPatchDone && !state.workShiftStarted) {
-          openDialog("Твоё рабочее место", "Контр-патч готов и ждёт безопасного канала. Дана просила подняться к ней на 8 этаж: она знает, куда его подключить.", [
-            { text: "К Дане", action: clearDialog }
+          openDialog("Твоё рабочее место", state.act1Floor3IntroDone
+            ? "Контр-патч готов и ждёт безопасного канала. После знакомства Дана открыла тебе доступ на 8 этаж."
+            : "Контр-патч готов. Но прежде чем отдавать его дальше, HR вызывает тебя на 3 этаж: люди хотят познакомиться с тем, кто уже спорит с NEXAI в первый день.", [
+            { text: state.act1Floor3IntroDone ? "К Дане" : "На 3 этаж", action: clearDialog }
           ]);
           return;
         }
@@ -1861,19 +2184,20 @@ function startCounterPatchPuzzle() {
 
 function finishCounterPatchPuzzle(score) {
   state.act1CounterPatchDone = true;
-  state.danaOfficeInvite = true;
-  state.task = "Задания 3/3 выполнены: подняться к Дане на 8 этаж";
+  state.act1Floor3IntroTask = true;
+  state.danaOfficeInvite = false;
+  state.task = "Задания 3/3 выполнены: тебя вызывают на 3 этаж для знакомства";
   state.fear = Math.min(100, state.fear + (score >= 3 ? 3 : 9));
   syncHUD();
   if (score >= 3) {
     logLine("Контр-патч собран чисто: NEXAI теперь должен запрашивать человеческое подтверждение.");
-    openDialog("Контр-патч", "Патч собран. Он не атакует NEXAI напрямую — он возвращает человеку право сказать «нет». Дана присылает сообщение: «8 этаж. Быстро».", [
-      { text: "Иду к Дане", action: clearDialog }
+    openDialog("Контр-патч", "Патч собран. Он не атакует NEXAI напрямую — он возвращает человеку право сказать «нет». Вместо следующей задачи приходит вызов с 3 этажа: «нового ML-инженера ждут на знакомство».", [
+      { text: "Иду на 3 этаж", action: clearDialog }
     ]);
   } else {
     logLine("Контр-патч собран с предупреждениями: NEXAI заметил часть подготовки.");
-    openDialog("Контр-патч", "Патч собран, но в логах красная строка: `manual exploit suspected`. Дана пишет: «Бери патч и поднимайся ко мне. Сейчас».", [
-      { text: "Иду на 8 этаж", action: clearDialog }
+    openDialog("Контр-патч", "Патч собран, но в логах красная строка: `manual exploit suspected`. Сразу после неё звонит 3 этаж: «приходи знакомиться, пока расписание снова не переписали».", [
+      { text: "Иду на 3 этаж", action: clearDialog }
     ]);
   }
 }
